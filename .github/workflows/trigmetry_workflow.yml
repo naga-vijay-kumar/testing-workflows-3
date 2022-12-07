@@ -8,7 +8,7 @@ on:
     branches: 
       - 'trigmetry_onboard'
     paths:
-      - 'trigmetry2.0-alert-configs'
+      - 'trigmetry2.0-alert-configs/**'
       - '!log_alerts/**'
       - '!trace_alerts'
       - '!slo-configs'
