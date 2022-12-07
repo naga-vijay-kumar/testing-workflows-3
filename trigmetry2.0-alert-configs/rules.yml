@@ -1,0 +1,468 @@
+groups:
+- name: Elasticsearch alerts
+  rules:
+  - alert: ElasticsearchHeapUsageTooHigh
+    expr: (elasticsearch_jvm_memory_used_bytes{area="heap"} / elasticsearch_jvm_memory_max_bytes{area="heap"}) * 100 > 85
+    for: 5m
+    labels:
+      severity: critical
+      noc_severity: p2
+    annotations:
+      summary: "[Heap usage]: [{{ $labels.region }}] [{{ $labels.cluster }}] [{{ $labels.instance }}] - [{{ $value }}%]"
+  - alert: ElasticsearchClusterRed
+    expr: max by (job, cluster, region) (elasticsearch_cluster_health_status{color="red"}) > 0
+    for: 5m
+    labels:
+      severity: critical
+      noc_severity: p0
+    annotations:
+      summary: "[{{ $labels.region }}] [{{ $labels.cluster }}]"    
+  - alert: ElasticsearchClusterYellow
+    expr: max by (job, cluster, region) (elasticsearch_cluster_health_status{color="yellow"}) > 0
+    for: 10m
+    labels:
+      severity: warning
+      noc_severity: p2
+    annotations:
+      summary: "[{{ $labels.region }}] [{{ $labels.cluster }}]" 
+  - alert: ElasticsearchRelocationShards
+    expr: max by (job, cluster, region) (elasticsearch_cluster_health_relocating_shards) > 50
+    for: 15m
+    labels:
+      severity: warning
+      noc_severity: p2
+    annotations:
+      summary: "[{{ $labels.region }}] [{{ $labels.cluster }}] relocating shard count is [{{ $value }}]"
+  - alert: ElasticsearchInitializingShards
+    expr: max by (job, cluster, region) (elasticsearch_cluster_health_initializing_shards) > 0
+    for: 10m
+    labels:
+      severity: warning
+      noc_severity: p2
+    annotations:
+      summary: "[{{ $labels.region }}] [{{ $labels.cluster }}] initializing shard count is [{{ $value }}]" 
+  - alert: ElasticsearchUnassignedShards
+    expr: max by (job, cluster, region) (elasticsearch_cluster_health_unassigned_shards) > 50
+    for: 5m
+    labels:
+      severity: critical
+      noc_severity: p2
+    annotations:
+      summary: "[{{ $labels.region }}] [{{ $labels.cluster }}] unassigned shard count is [{{ $value }}]" 
+  - alert: ElasticsearchPendingTasks
+    expr: max by (job, cluster, region) (elasticsearch_cluster_health_number_of_pending_tasks) > 50
+    for: 5m
+    labels:
+      severity: warning
+      noc_severity: p2
+    annotations:
+      summary: "[{{ $labels.region }}] [{{ $labels.cluster }}] pending task count is [{{ $value }}]"
+  - alert: ElasticsearchProcessDead
+    expr: (elasticsearch_clusterinfo_up{cluster!~".*trace.*"}) == 0
+    for: 5m
+    labels:
+      severity: critical
+      noc_severity: p0
+      service: Logs
+    annotations:
+      summary: " [{{ $labels.job }}] [{{ $labels.region }}] [{{ $labels.instance }}]"
+  - alert: TracingElasticsearchProcessDead
+    expr: (elasticsearch_clusterinfo_up{cluster=~".*trace.*"}) == 0
+    for: 3m
+    labels:
+      severity: critical
+      noc_severity: p0
+      service: Sherlock
+    annotations:
+      summary: " [{{ $labels.job }}] [{{ $labels.region }}] [{{ $labels.instance }}]"
+
+  - alert: ElasticsearchReadOnlyIndex
+    expr: max by (region,stack,job)(elasticsearch_indices_settings_stats_read_only_indices) > 0
+    for: 1m
+    labels:
+      severity: critical
+      noc_severity: p0
+    annotations:
+      summary: "Index read only in region [{{ $labels.region }} {{ $labels.job }} {{ $labels.stack }}]"
+- name: Tracing Jaeger Collector and Querier Alerts
+  rules:
+  - alert: JaegerCollectorDroppingSpans
+    expr: 100 * sum(rate(jaeger_collector_spans_dropped_total{host!~".*staging.*"}[1m])) by (job, instance, region) / sum(rate(jaeger_collector_spans_received_total{host!~".*staging.*"}[1m])) by (job, instance, region) > 1
+    for: "5m"
+    labels:
+      severity: "critical"
+      noc_severity: p0
+      service: Sherlock
+    annotations:
+      summary: "[{{ $labels.region }}] [{{ $labels.instance }}] - {{ $value }}"
+  - alert: CollectorBulkWriteErrorsToProxy
+    expr: 100 * sum(rate(jaeger_bulk_index_errors_total{host!~".*staging.*"}[1m])) by (job, instance, region, host) / sum(rate(jaeger_bulk_index_inserts_total{host!~".*staging.*"}[1m])) by (job, instance, region, host) > 1
+    for: "5m"
+    labels:
+      severity: "critical"
+      noc_severity: p0
+    annotations:
+      summary: "[{{ $labels.region }}] [{{ $labels.instance }}] - {{ $value }}"
+  - alert: StagingCollectorBulkWriteErrorsToProxy
+    expr: 100 * sum(rate(jaeger_bulk_index_errors_total{host=~".*staging.*"}[1m])) by (job, instance, region, host) / sum(rate(jaeger_bulk_index_inserts_total{host=~".*staging.*"}[1m])) by (job, instance, region, host) > 1
+    for: "5m"
+    labels:
+      severity: "warning"
+      noc_severity: p1
+    annotations:
+      summary: "[{{ $labels.region }}] [{{ $labels.instance }}] - {{ $value }}"
+  - alert: JaegerCollectorQueueLatencyIncreasing
+    expr: histogram_quantile(0.95, sum(rate(jaeger_collector_in_queue_latency_bucket[5m])) by (le, job, instance, region)) > 1
+    for: "5m"
+    labels:
+      severity: "warning"
+      noc_severity: p1
+    annotations:
+      summary: "95th Percentile of latency - [{{ $labels.region }}] [{{ $labels.instance }}] - {{ $value }} "
+  - alert: JaegerCollectorQueueIsAtCapacity
+    expr: ceil(jaeger_collector_queue_length) == ceil(jaeger_collector_queue_capacity)
+    for: "5m"
+    labels:
+      severity: "critical"
+      noc_severity: p0
+    annotations:
+      summary: "collector queue at capacity [{{ $labels.region }}] [{{ $labels.instance }}] - {{ $value }}"
+  - alert: JaegerQueryReqsFailing
+    expr: 100 * sum(rate(jaeger_query_requests_total{result=~".*err.*"}[1m])) by (job, instance, region, operation) / sum(rate(jaeger_query_requests_total[1m])) by (job, instance, region, operation)> 1
+    for: "5m"
+    labels:
+      severity: "warning"
+      noc_severity: p1
+    annotations:
+      summary: "Jaeger querier requests failure [{{ $labels.region }}] [{{ $labels.instance }}] [{{ $labels.operation }}]  - {{ $value }}"
+
+- name: Trace Proxy Alerts
+  rules:
+    - alert: TracesReceivedTooHigh
+      expr: sum(rate(com_freshworks_haystack_resources_TracingResource_traceevents_total{job="trace-proxy"}[5m])) by (instance, job, region) > 50000
+      for: 5m
+      labels:
+        severity: warning
+        noc_severity: p1
+      annotations:
+        summary: "[Traces received too high for group]: [{{ $labels.job }}] [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }} "
+    - alert: 4XXErrorsReceived
+      expr: sum(increase(io_dropwizard_jetty_MutableServletContextHandler_4xx_responses_total{job="trace-proxy"}[1m])) by (instance, job, region) > 10
+      for: 1m
+      labels:
+        severity: warning
+        noc_severity: p1
+      annotations:
+        summary: "[4XX errors]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }} "
+    - alert: 5XXErrorsReceived
+      expr: sum(increase(io_dropwizard_jetty_MutableServletContextHandler_5xx_responses_total{job="trace-proxy"}[1m])) by (instance, job, region) > 0
+      for: 1m
+      labels:
+        severity: critical
+        noc_severity: p0
+      annotations:
+        summary: "[5XX errors]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }} "
+    - alert: JvmUsageTooHigh
+      expr: sum(jvm_memory_heap_usage{job="trace-proxy"}) by (instance, region, job) * 100 > 90
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p0
+      annotations:
+        summary: "[JVM usage]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }} "
+
+- name: Tracing Logstash Alerts
+  rules:
+    - alert: LogstashJvmUsageTooHigh
+      expr: sum(abs(logstash_jvm_mem_heap_used_percent{job="trace-worker"})) by (layer, instance, region) > 90
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p1
+      annotations:
+        summary: "[JVM usage]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }}% "
+
+    - alert: LogstashStreamDead
+      expr: avg(cloudwatch_aws_kinesis_get_records__records_sum{stream_name=~".*traces"}) by (region,stream_name) == 0 and sum(rate(cloudwatch_aws_kinesis_incoming_records_sum{stream_name=~".*traces"}[5m])) by (region,stream_name,job) > 0
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p0
+      annotations: 
+        summary: "[Trace stream dead] [{{ $labels.region }}]  [{{ $labels.stream_name }}] "
+
+- name: UF Proxy Alerts
+  rules:
+    - alert: UFLogsReceivedTooHigh
+      expr: sum(rate(com_freshworks_haystack_resources_ProxyResource_events_total{job="uf-proxy"}[5m])) by (instance, job, region) > 50000
+      for: 5m
+      labels:
+        severity: warning
+        noc_severity: p2
+      annotations:
+        summary: "[UF logs received too high for group]: [{{ $labels.job }}] [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }} "
+    - alert: UFLogs4XXErrorsReceived
+      expr: sum(increase(io_dropwizard_jetty_MutableServletContextHandler_4xx_responses_total{job="uf-proxy"}[1m])) by (instance, job, region) > 10
+      for: 1m
+      labels:
+        severity: warning
+        noc_severity: p1
+      annotations:
+        summary: "[4XX errors]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }} "
+    - alert: UF5XXErrorsReceived
+      expr: sum(increase(io_dropwizard_jetty_MutableServletContextHandler_5xx_responses_total{job="uf-proxy"}[1m])) by (instance, job, region) > 0
+      for: 1m
+      labels:
+        severity: critical
+        noc_severity: p0
+      annotations:
+        summary: "[5XX errors]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }} "
+    - alert: UFProxyJvmUsageTooHigh
+      expr: sum(jvm_memory_heap_usage{job="uf-proxy"}) by (instance, region, job) * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+        noc_severity: p1
+      annotations:
+        summary: "[JVM usage]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }}% "
+
+- name: Tracing stream alerts
+  rules:
+    - alert: TracingWriteThroughputExceeded
+      expr: avg(cloudwatch_aws_kinesis_write_provisioned_throughput_exceeded_sum{stream_name=~".*haystack_traces"}) by (stream_name,region,job) >  1000
+      for: 8m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Sherlock
+      annotations:
+        summary: "[WriteThroughputExceeded for stream]:[{{ $labels.stream_name}}]  [{{ $labels.region }}] - {{ $value }} "
+
+    - alert: TracingReadThroughputExceeded
+      expr: avg(cloudwatch_aws_kinesis_read_provisioned_throughput_exceeded_sum{stream_name=~".*haystack_traces"}) by (stream_name,region,job) >  500
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p1
+      annotations:
+        summary: "[ReadThroughputExceeded for stream]: [{{ $labels.stream_name}}] [{{ $labels.region }} - {{ $value }}"
+
+    - alert: TracingGetRecordsIteratorAgeHigh
+      expr:  max(cloudwatch_aws_kinesis_get_records__iterator_age_milliseconds_maximum{stream_name=~".*haystack_traces"})  by (stream_name,region,job) >=  600000
+      for: 3m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Sherlock 
+      annotations:
+        summary: "[Iterator high for stream]: [{{ $labels.stream_name}}] [{{ $labels.region }}] - {{ $value }}"
+
+    - alert: TracingWriteThroughputExceededStaging
+      expr: avg(cloudwatch_aws_kinesis_write_provisioned_throughput_exceeded_sum{stream_name=~".*haystack_staging_traces"}) by (stream_name,region,job) >  500
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations:
+        summary: "[WriteThroughputExceeded for stream]:[{{ $labels.stream_name}}]  [{{ $labels.region }}] - {{ $value }} "
+
+    - alert: TracingReadThroughputExceededStaging
+      expr: avg(cloudwatch_aws_kinesis_read_provisioned_throughput_exceeded_sum{stream_name=~".*haystack_staging_traces"}) by (stream_name,region,job) >  500
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations:
+        summary: "[ReadThroughputExceeded for stream]: [{{ $labels.stream_name}}] [{{ $labels.region }} - {{ $value }}"
+
+    - alert: TracingGetRecordsIteratorAgeHighStaging
+      expr:  max(cloudwatch_aws_kinesis_get_records__iterator_age_milliseconds_maximum{stream_name=~".*haystack_staging_traces"})  by (stream_name,region,job) >=  300000
+      for: 3m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations:
+        summary: "[Iterator high for stream]: [{{ $labels.stream_name}}] [{{ $labels.region }}] - {{ $value }}"
+
+
+- name: Kinesis stream alerts
+  rules:
+    - alert: WriteThroughputExceeded
+      expr: avg(cloudwatch_aws_kinesis_write_provisioned_throughput_exceeded_sum{stream_name!~".*traces|.*staging.*"}) by (stream_name,region,job) >  1000
+      for: 10m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Logs
+      annotations:
+        summary: "[WriteThroughputExceeded for stream]:[{{ $labels.stream_name}}]  [{{ $labels.region }}] - {{ $value }} "
+    - alert: StagingWriteThroughputExceeded
+      expr: avg(cloudwatch_aws_kinesis_write_provisioned_throughput_exceeded_sum{stream_name=~".*staging.*"}) by (stream_name,region,job)  >  1000
+      for: 10m
+      labels:
+        severity: critical
+        noc_severity: p1
+      annotations:
+        summary: "[WriteThroughputExceeded for stream]:[{{ $labels.stream_name}}]  [{{ $labels.region }}] - {{ $value }} "
+
+    - alert: ReadThroughputExceeded
+      expr: avg(cloudwatch_aws_kinesis_read_provisioned_throughput_exceeded_sum{stream_name!~".*traces"}) by (stream_name,region,job) >  500
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p1
+      annotations:
+        summary: "[ReadThroughputExceeded for stream]: [{{ $labels.stream_name}}] [{{ $labels.region }} - {{ $value }}"
+
+    - alert: GetRecordsIteratorAgeHigh
+      expr: max(cloudwatch_aws_kinesis_get_records__iterator_age_milliseconds_maximum{stream_name!~".*traces|.*metrics|.*staging.*|.*haystack_haystack.*"})  by (stream_name,region,job) >=  600000
+      for: 15m
+      labels:
+        severity: critical
+        noc_severity: p0
+      annotations:
+        summary: "[Iterator high for stream]: [{{ $labels.stream_name}}] [{{ $labels.region }}]"
+
+    - alert: StagingGetRecordsIteratorAgeHigh
+      expr: max(cloudwatch_aws_kinesis_get_records__iterator_age_milliseconds_maximum{stream_name=~".*staging.*"})  by (stream_name,region,job) >=  600000
+      for: 15m
+      labels:
+        severity: critical
+        noc_severity: p1
+      annotations:
+        summary: "[Iterator high for stream]: [{{ $labels.stream_name}}] [{{ $labels.region }}]"
+
+    - alert: MetricsGetRecordsIteratorAgeHigh
+      expr: max(cloudwatch_aws_kinesis_get_records__iterator_age_milliseconds_maximum{stream_name=~".*metrics"})  by (stream_name,region,job) >=  600000
+      for: 30m
+      labels:
+        severity: high
+        noc_severity: p1
+      annotations:
+        summary: "[Iterator high for stream]: [{{ $labels.stream_name}}] [{{ $labels.region }}]"
+
+- name: RUM kinesis stream alerts
+  rules:
+    - alert: TracingWriteThroughputExceeded
+      expr: avg(cloudwatch_aws_kinesis_write_provisioned_throughput_exceeded_sum{stream_name=~".*haystack_rum"}) by (stream_name,region,job) >  500
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Sherlock
+      annotations:
+        summary: "[WriteThroughputExceeded for stream]:[{{ $labels.stream_name}}]  [{{ $labels.region }}] - {{ $value }} "
+
+    - alert: TracingReadThroughputExceeded
+      expr: avg(cloudwatch_aws_kinesis_read_provisioned_throughput_exceeded_sum{stream_name=~".*haystack_rum"}) by (stream_name,region,job) >  500
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p1
+      annotations:
+        summary: "[ReadThroughputExceeded for stream]: [{{ $labels.stream_name}}] [{{ $labels.region }} - {{ $value }}"
+
+    - alert: TracingGetRecordsIteratorAgeHigh
+      expr:  max(cloudwatch_aws_kinesis_get_records__iterator_age_milliseconds_maximum{stream_name=~".*haystack_rum"})  by (stream_name,region,job) >=  180000
+      for: 3m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Sherlock
+      annotations:
+        summary: "[Iterator high for stream]: [{{ $labels.stream_name}}] [{{ $labels.region }}] - {{ $value }}"
+
+- name: Logs proxy alerts
+  rules:
+    - alert: LogsProxy4XXErrorsReceived
+      expr: sum(increase(io_dropwizard_jetty_MutableServletContextHandler_4xx_responses_total{job="k8s-logs-proxy"}[1m])) by (instance, job, region,host) > 600
+      for: 1m
+      labels:
+        severity: warning
+        noc_severity: p1
+      annotations:
+        summary: "[4XX errors]: [{{ $labels.instance }}] [{{ $labels.region }} {{$labels.host}}] - {{ $value }} "
+    - alert: LogsProxy5XXErrorsReceived
+      expr: sum(increase(io_dropwizard_jetty_MutableServletContextHandler_5xx_responses_total{job="k8s-logs-proxy"}[1m])) by (instance, job, region,host) > 10
+      for: 1m
+      labels:
+        severity: critical
+        noc_severity: p0
+      annotations:
+        summary: "[5XX errors]: [{{ $labels.instance }}] [{{ $labels.region }} {{$labels.host}}] - {{ $value }} "
+    - alert: LogsProxyJvmUsageTooHigh
+      expr: sum(jvm_memory_heap_usage{job="k8s-logs-proxy"}) by (instance, region, job,host) * 100 > 90
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p0
+      annotations:
+        summary: "[JVM usage]: [{{ $labels.instance }}] [{{ $labels.region }} {{$labels.host}}] - {{ $value }} "
+    - alert: LogsTrafficIncreased2X
+      expr: (sum(rate(com_freshworks_haystack_resources_ProxyResource_events_total{job=~"logs-proxy|k8s-logs-proxy"}[5m])) by (region,product) > 10000) / (sum(rate(com_freshworks_haystack_resources_ProxyResource_events_total{job=~"logs-proxy|k8s-logs-proxy"}[5m] offset 1w)) by (region,product) > 10000) > 2 
+      for: 1h
+      labels:
+        severity: warning
+        noc_severity: p1
+      annotations:
+        summary: "Traffic increased 2X times for [{{ $labels.product }}] in [{{ $labels.region }}]"
+    - alert: LogsMissing
+      expr: (sum(rate(com_freshworks_haystack_resources_ProxyResource_events_total{job=~"logs-proxy|k8s-logs-proxy"}[5m] offset 1w)) by (region,product) > 1000) and (sum(rate(com_freshworks_haystack_resources_ProxyResource_events_total{job=~"logs-proxy|k8s-logs-proxy"}[5m] )) by (region,product) == 0)
+      for: 10m
+      labels:
+        severity: warning
+        noc_severity: p1
+      annotations:
+        summary: "Traffic became 0 for [{{ $labels.product }}] in [{{ $labels.region }}]"
+    - alert: LogsTrafficReduced
+      expr: (sum(rate(com_freshworks_haystack_resources_ProxyResource_events_total{job=~"logs-proxy|k8s-logs-proxy"}[5m] offset 1w)) by (region,product) > 5000)/ (sum(rate(com_freshworks_haystack_resources_ProxyResource_events_total{job=~"logs-proxy|k8s-logs-proxy"}[5m] )) by (region,product) ) > 1.5
+      for: 6h
+      labels:
+        severity: warning
+        noc_severity: p1
+      annotations:
+        summary: "Traffic reduced for [{{ $labels.product }}] in [{{ $labels.region }}]"
+- name: RUM proxy alerts
+  rules:
+    - alert: RUMProxy4XXErrorsReceived
+      expr: sum(increase(io_dropwizard_jetty_MutableServletContextHandler_4xx_responses_total{job=~"k8s-rum-proxy-.*|public-metrics-proxy.*"}[1m])) by (instance, job, region, host) > 50
+      for: 1m
+      labels:
+        severity: warning
+        noc_severity: p1
+      annotations:
+        summary: "[4XX errors]: [{{ $labels.instance }}] [{{ $labels.region }}] [{{$labels.host}}] {{$labels.job}}] - [{{ $value }} "
+    - alert: RUMProxy5XXErrorsReceived
+      expr: sum(increase(io_dropwizard_jetty_MutableServletContextHandler_5xx_responses_total{job=~"k8s-rum-proxy-.*|public-metrics-proxy.*"}[1m])) by (instance, job, region, host) > 10
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p0
+      annotations:
+        summary: "[5XX errors]: [{{ $labels.instance }}] [{{ $labels.region }}] [{{$labels.host}}] [{{$labels.job}}] - {{ $value }} "
+    - alert: RUMProxyJvmUsageTooHigh
+      expr: sum(jvm_memory_heap_usage{job=~"k8s-rum-proxy-.*|public-metrics-proxy.*"}) by (instance, region, job, host) * 100 > 90
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p0
+      annotations:
+        summary: "[JVM usage]: [{{ $labels.instance }}] [{{ $labels.region }}] [{{$labels.host}}] - {{ $value }} "
+    - alert: TrafficIncreased2X
+      expr: (sum(rate(com_freshworks_haystack_resources_PublicMetricsResource_events_total{job=~"k8s-rum-proxy-.*|public-metrics-proxy.*"}[5m])) by (job,region,product) > 1000) / (sum(rate(com_freshworks_haystack_resources_PublicMetricsResource_events_total{job=~"k8s-rum-proxy-.*|public-metrics-proxy.*"}[5m] offset 1w)) by (job, region,product) > 1000) > 2 
+      for: 1h
+      labels:
+        severity: warning
+        noc_severity: p1
+      annotations:
+        summary: "Traffic increased 2X times for [{{ $labels.product }}] in [{{ $labels.region }}] [{{ $labels.job }}]"
+    - alert: RUMProxy2XXReceivedDegraded
+      expr: sum(increase(io_dropwizard_jetty_MutableServletContextHandler_2xx_responses_total{job=~"k8s-rum-proxy-prod.*"}[1m])) by (host, job, region, product) < 100
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p1
+      annotations:
+        summary: "[2XX requests]: [{{ $labels.product }}] [{{ $labels.host }}] [{{ $labels.region }} [{{$labels.host}}] [{{$labels.job}}] - {{ $value }} "
+
+

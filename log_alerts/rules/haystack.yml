@@ -1,0 +1,122 @@
+alert_params:   
+  "rum_metrics_indexing_error":
+    type: any
+    index: haystack*
+    realert:
+      minutes: 1
+    aggregation:
+      minutes: 5
+    aggregation_key: "kubernetes.pod.name"
+    query_key: "kubernetes.pod.name"
+    filter:
+      - query:
+          query_string:
+            query: "kubernetes.namespace: rum-logstash AND message: \"[ERROR]\""
+    alert_subject: 'Noticed RUM event indexing error'
+    alerta_severity: critical
+    alerta_environment: haystack
+    include: ["message", "kubernetes.pod.name"]
+    labels:
+      service: "rum"
+      noc_severity: p1
+
+  "envoy_configuration_error":
+    type: any
+    index: haystack*
+    realert:
+      minutes: 1
+    aggregation:
+      minutes: 5
+    aggregation_key: "host"
+    query_key: "host"
+    filter:
+      - query:
+          query_string:
+            query: "name: envoy_server_logs AND message: \"error initializing configuration\""
+    alert_subject: 'Noticed envoy configuration validation failed'
+    alerta_severity: critical
+    alerta_environment: haystack
+    include: ["message", "product","host","group", "name"]
+    labels:
+      service: "envoy"
+      noc_severity: p0          
+
+  "envoy_error":
+    type: any
+    index: haystack*
+    realert:
+      minutes: 1
+    aggregation:
+      minutes: 5
+    aggregation_key: "host"
+    query_key: "host"
+    filter:
+      - query:
+          query_string:
+            query: "name: envoy_server_logs AND message: critical"
+    alert_subject: 'Envoy critical error failed to start'
+    alerta_severity: critical
+    alerta_environment: haystack
+    include: ["message", "product","host","group", "name"]
+    labels:
+      service: "envoy"
+      noc_severity: p0
+
+  "discovery_service_route_cluster_not_found_error":
+    type: any
+    index: haystack*
+    realert:
+      minutes: 1
+    aggregation:
+      minutes: 5
+    aggregation_key: "kubernetes.pod.name"
+    query_key: "kubernetes.pod.name"
+    filter:
+      - query:
+          query_string:
+            query: "(kubernetes.namespace: discovery OR kubernetes.namespace: discovery-meta) AND level: error AND msg:\"Route cluster name not found in discovered clusters\""
+    alert_subject: 'Errors received at discovery service'
+    alerta_severity: critical
+    alerta_environment: haystack
+    include: ["message", "product","kubernetes.namespace","group"]
+    labels:
+      service: "discovery"
+      noc_severity: p1
+
+  "discovery_service_error":
+    type: any
+    index: haystack*
+    realert:
+      minutes: 0
+    aggregation:
+      minutes: 5
+    aggregation_key: "kubernetes.pod.name"
+    query_key: "kubernetes.pod.name"
+    filter:
+      - query:
+          query_string:
+            query: "(kubernetes.namespace: discovery OR kubernetes.namespace: discovery-meta) AND level: error AND NOT msg:\"Route cluster name not found in discovered clusters\""
+    alert_subject: 'Errors received at discovery service'
+    alerta_severity: critical
+    alerta_environment: haystack
+    include: ["message", "product","kubernetes.namespace","group"]
+    labels:
+      service: "discovery"
+      noc_severity: p1                        
+
+
+  "redis_endpoint_warnings":
+    type: frequency
+    index: staging-redis-dbaas*
+    num_events: 1
+    timeframe:
+      minutes: 1
+    filter:
+      - query:
+          query_string:
+            query: name:"endpoint_monitoring" AND group:"dbaas-redis-endpoint" AND message:"\"cannot find configs\""
+    alert_subject: "Cannont find configs for endpoint"
+    alerta_severity: warning
+    alerta_environment: haystack
+    use_count_query: true
+    top_count_keys: ["time", "level", "name"] 

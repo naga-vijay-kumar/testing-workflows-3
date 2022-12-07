@@ -1,0 +1,18 @@
+
+//Alert when container memory happen
+stream
+    |from()
+        .database('staging-freshid')
+        .measurement('cloudwatch_aws_ebs')
+    |groupBy('region', 'k8s_cluster_name', 'host')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('volume_queue_length_average')
+         .as('queue_length')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "host" }} ] [ volume_queue_length ] - {{ index .Fields "volume_queue_length" }} {{ .Level }}')
+        .crit(lambda: "queue_length" > 16 )
+        .critReset(lambda: "queue_length" < 4)
+        .stateChangesOnly()
+        .topic('staging-freshid')

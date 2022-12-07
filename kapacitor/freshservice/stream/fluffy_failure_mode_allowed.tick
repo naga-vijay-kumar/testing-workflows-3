@@ -1,0 +1,18 @@
+stream
+    |from()
+        .database('freshservice')
+        .measurement('envoy.cluster.ratelimit.failure_mode_allowed')
+    |where(lambda: "envoy.cluster_name" == 'upstream_service')
+    |groupBy('region')
+    |window()
+        .period(1m)
+        .every(1m)
+    |sum('value')
+        .as('total')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ fluffy - failure_mode_allowed ] - {{ index .Fields "total" }} {{ .Level }}')
+        .crit(lambda: "total" >= 200)
+        .critReset(lambda: "total" < 200)
+        .stateChangesOnly()
+        .topic('freshservice')
+        

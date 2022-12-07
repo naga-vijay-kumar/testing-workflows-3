@@ -1,0 +1,11 @@
+stream
+    |from()
+        .database('freshchat')
+        .measurement('cpu')
+        .where(lambda: "group" == 'statscollector')
+        .groupBy('cluster','region','group', 'host')
+    |deadman(0.0, 300s)
+    	.message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "host" }} ] [ statscollector_not_responding ] - {{ if eq .Level "OK" }}alive{{ else }}dead{{ end }}. Emitted {{ index .Fields "emitted" }} points in last 5 mins. {{ .Level }}')
+	    .id('{{ .Name }}:{{ .Group }}/statscollector_not_responding')
+	    .stateChangesOnly()
+	    .topic('freshchat')

@@ -1,0 +1,76 @@
+global:
+  resolve_timeout: 10m
+  smtp_from: 'haystack_mail'
+  smtp_auth_username: 'sg_username'
+  smtp_smarthost: 'server_smarthost'
+  smtp_auth_password: 'sg_password'
+
+
+templates:
+- '*.tmpl'
+
+receivers:
+- name: trace-slack-receiver
+  slack_configs:
+  - channel: '#haystack-trace-alerts'
+    api_url: 'https://hooks.slack.com/services/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'
+    send_resolved: true
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+    title: |-
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }} {{ .CommonLabels.test }} [{{ .CommonLabels.severity }}]
+    text: >-
+      {{ range .Alerts -}}
+      *Alert: This alert is just to test entire tracing alerting pipeline is functional.* 
+      {{ end }}
+
+- name: trace-lag-alert-receiver
+  slack_configs:
+  - channel: '#haystack-trace-alerts'
+    api_url: 'https://hooks.slack.com/services/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'
+    send_resolved: true
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+    title: |-
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }}  {{ .CommonLabels.job }}  [{{ .CommonLabels.severity }}]
+    text: >-
+      {{ range .Alerts -}}
+      *Alert:* {{ .Annotations.summary }}
+      {{ end }}
+
+- name: trace-elastalert-receiver
+  slack_configs:
+  - channel: '#haystack-crit-alerts'
+    api_url: 'https://hooks.slack.com/services/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'
+    send_resolved: true
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+    title: |-
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }}  {{ .CommonLabels.job }}  [{{ .CommonAnnotations.severity }}]
+    text: >-
+      {{ range .Alerts -}}
+      *Alert:* {{ .Annotations.summary }}
+      *Description:* {{ .Annotations.description }}
+      {{ end }}
+
+route:
+  group_by:
+  - alertname
+  - job
+  - instance
+  - region
+  group_interval: 1m
+  group_wait: 10s
+  receiver: trace-slack-receiver
+  repeat_interval: 3h
+  routes:
+  - match_re:
+      alertname: .*lag.*
+    receiver: 'trace-lag-alert-receiver'
+  - match_re:
+      alertname: .*reports.*
+    receiver: 'trace-elastalert-receiver'
+  - match_re:
+      job: trace_alerts
+    receiver: 'trace-elastalert-receiver'
+

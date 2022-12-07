@@ -1,0 +1,9 @@
+groups:
+- name: node_recording_rules
+  rules:
+    - record: host_memory_usage 
+      expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 
+
+    - record: host_cpu_usage
+      expr: 100 - (avg by(job, instance, region) (irate(node_cpu_seconds_total{mode="idle",instance!~"metrics-worker.*"}[5m])) * 100)
+

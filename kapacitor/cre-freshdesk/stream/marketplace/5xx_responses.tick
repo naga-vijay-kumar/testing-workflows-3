@@ -1,0 +1,17 @@
+// Alert to trigger if no of 5xx errors for a component-account exceeds the threshold
+stream
+  |from()
+    .database('cre-freshdesk')
+    .measurement('cre_freshdesk_marketplace_5xx')
+  |groupBy('a_id','c','region')
+  |window()
+    .period(1m)
+    .every(1m)
+  |sum('count')
+    .as('total_5xx')
+  |alert()
+    .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "c" }} ] [ {{ index .Tags "a_id" }} ] [ marketplace_5xx_responses ] - {{ index .Fields "total_5xx" }} {{ .Level }}')
+    .crit(lambda: "total_5xx" >= 100)
+    .critReset(lambda: "total_5xx" < 100)
+    .stateChangesOnly()
+    .topic('cre-freshdesk')

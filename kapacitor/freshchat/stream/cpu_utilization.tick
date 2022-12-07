@@ -1,0 +1,40 @@
+var cpu = stream
+  |from()
+      .database('freshchat')
+      .measurement('cpu')
+      .where(lambda: "cpu" == 'cpu-total')
+      .groupBy('region','cluster','group','host')
+  |window()
+    .period(5m)
+    .every(1m)
+  |mean('usage_idle')
+    .as('usage_idle')
+  |eval(lambda: 100.0 - "usage_idle")
+    .as('cpu_utilization')
+
+
+cpu
+  |where(lambda: "group" != 'elasticsearch' AND "group" != 'k8s')
+  |alert()
+    .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "group" }} ] [ {{ index .Tags "host" }} ] [ cpu_utilization ] - {{ index .Fields "cpu_utilization" }} {{ .Level }}')
+    .id('{{ .Name }}:{{ .Group }}/cpu_utilization')
+    .crit(lambda: "cpu_utilization" > 80)
+    .critReset(lambda: "cpu_utilization" <= 75)
+    .warn(lambda: "cpu_utilization" > 60)
+    .warnReset(lambda: "cpu_utilization" <= 50)
+    .stateChangesOnly()
+    .topic('freshchat')
+
+cpu
+  |where(lambda: "group" == 'k8s')
+  |stateCount(lambda: isPresent("cpu_utilization"))
+  |alert()
+    .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "group" }} ] [ {{ index .Tags "host" }} ] [ cpu_utilization ] - {{ index .Fields "cpu_utilization" }} {{ .Level }}')
+    .id('{{ .Name }}:{{ .Group }}/cpu_utilization')
+    .crit(lambda: "cpu_utilization" > 80 AND "state_count" > 5)
+    .critReset(lambda: "cpu_utilization" <= 75 AND "state_count" > 5)
+    .warn(lambda: "cpu_utilization" > 60 AND "state_count" > 5)
+    .warnReset(lambda: "cpu_utilization" <= 50 AND "state_count" > 5)
+    .stateChangesOnly()
+    .topic('freshchat')
+

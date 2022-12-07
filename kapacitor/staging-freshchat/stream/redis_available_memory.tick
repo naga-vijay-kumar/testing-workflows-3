@@ -1,0 +1,43 @@
+var free_mem = stream
+    |from()
+        .database('staging-freshchat')
+        .measurement('cloudwatch_aws_elasti_cache')
+        .where(lambda: isPresent("freeable_memory_average") AND isPresent("cache_cluster_id"))
+        .groupBy('cluster','region','cache_cluster_id')
+    |window()
+        .period(5m)
+        .every(1m)
+        .align()
+        .fillPeriod()
+    |mean('freeable_memory_average')
+        .as('mean_value')
+
+
+
+var bytes_used = stream
+    |from()
+        .database('staging-freshchat')
+        .measurement('cloudwatch_aws_elasti_cache')
+        .where(lambda: isPresent("bytes_used_for_cache_average") AND isPresent("cache_cluster_id"))
+        .groupBy('cluster','region','cache_cluster_id')
+    |window()
+        .period(5m)
+        .every(1m)
+        .align()
+        .fillPeriod()
+    |mean('bytes_used_for_cache_average')
+        .as('mean_value')
+
+
+bytes_used
+    |join(free_mem)
+        .as('bytes_used', 'free_mem')
+    |eval(lambda: ("free_mem.mean_value"/("free_mem.mean_value" + "bytes_used.mean_value"))*100.0)
+        .as('mem_free_percent')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "cache_cluster_id" }} ] [ redis_aws_elasticache_free_mem_pct ] - {{ index .Fields "mem_free_percent" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/redis_aws_elasticache_free_mem_pct')
+        .crit(lambda: "mem_free_percent" < 15)
+        .warn(lambda: "mem_free_percent" < 20)
+        .stateChangesOnly()
+        .topic('staging-freshchat')

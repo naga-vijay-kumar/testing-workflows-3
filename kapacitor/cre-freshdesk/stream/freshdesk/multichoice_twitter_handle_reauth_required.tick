@@ -1,0 +1,11 @@
+stream
+  |from()
+    .database('cre-freshdesk')
+    .measurement('cre_cf_sherlock_channel_auth_issue')
+  |where(lambda: "channel" == 'twitter' AND "account_id" == '986130')
+  |alert()
+    .message('[ {{ .Time }} ] [multichoice_twitter_handle_reauth_required] [ Twitter handle of Multichoice needs to be re-authenticated in Freshdesk. ] {{ .Level }}')
+    .crit(lambda: "count" == 1)
+    .critReset(lambda: "counter" == 0)
+    .stateChangesOnly()
+    .topic('cre-freshdesk')

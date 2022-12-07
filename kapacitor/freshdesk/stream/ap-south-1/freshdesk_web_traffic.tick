@@ -1,0 +1,35 @@
+var db = 'freshdesk'
+
+
+var measurement = 'envoy.http.downstream_rq_xx'
+
+var groupBy = ['region']
+
+var whereFilter = lambda: ("region" == 'ap-south-1') AND ("layer" =~ /fc-app/)
+
+
+
+var data = stream
+    |from()
+        .database(db)
+        .measurement(measurement)
+        .groupBy(groupBy)
+        .where(whereFilter)
+    |window()
+        .period(5m)
+        .every(5m)
+        .align()
+        .fillPeriod()
+    |sum('value')
+        .as('value')
+
+data
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ]  [ freshdesk_web_throughput_ind ] - {{ index .Fields "value" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/freshdesk_web_throughput_ind')
+        .warn(lambda: "value" > 290000)
+        .warnReset(lambda: "value" < 290000)
+        .crit(lambda: "value" > 295000)
+        .critReset(lambda: "value" < 295000)
+        .stateChangesOnly()
+        .topic('freshdesk')

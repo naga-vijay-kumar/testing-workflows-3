@@ -1,0 +1,14 @@
+"groups":
+- "name": "blackbox exporter alerts"
+  "rules":
+      - "alert": "EndpointDown"
+        "expr": probe_success == 0
+        "for": 10s
+        "labels":
+          "severity": "critical"
+          "priority": p0
+          "oncall": no
+          "alert_type": app
+          "component": "cortex"
+        "annotations":
+          "summary": "Endpoint {{ $labels.instance }} down"

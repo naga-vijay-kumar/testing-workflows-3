@@ -1,0 +1,20 @@
+groups:
+  - name: shared-services Alerts
+    rules:
+      - alert: UMS4XXErrorsReceived
+        expr: sum(rate(io_dropwizard_jetty_MutableServletContextHandler_4xx_responses_total{job="shared-services", app="user-management"}[1m])) by (pod, job, region) > 0
+        for: 0m
+        labels:
+          severity: warning
+          noc_severity: p1
+        annotations:
+          summary: "UMS: [4XX errors]: [{{ $labels.pod }}] [{{ $labels.region }}] - {{ $value }} "
+      - alert: UMS5XXErrorsReceived
+        expr: sum(rate(io_dropwizard_jetty_MutableServletContextHandler_5xx_responses_total{job="shared-services", app="user-management"}[1m])) by (pod, job, region) > 0
+        for: 0m
+        labels:
+          severity: critical
+          noc_severity: p0
+          service: UMS
+        annotations:
+          summary: "UMS: [5XX errors]: [{{ $labels.pod }}] [{{ $labels.region }}] - {{ $value }} "

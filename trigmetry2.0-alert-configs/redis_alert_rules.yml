@@ -1,0 +1,34 @@
+groups:
+- name: Redis Alerts
+  rules:
+    - alert: RedisMemoryUtilizationIsHigh
+      expr: (100 * (redis_memory_used_bytes{job=~".*redis.*"}  / redis_memory_max_bytes{job=~".*redis.*"} )) > 85
+      for: 10m
+      labels:
+        severity: warning
+        noc_severity: p1
+        service: sherlock
+      annotations:
+        summary: "[Redis RAM Usage]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }}% "
+
+    - alert: RedisMemoryUtilizationIsCritical
+      expr: (100 * (redis_memory_used_bytes{job=~".*redis.*"}  / redis_memory_max_bytes{job=~".*redis.*"} )) > 90
+      for: 10m
+      labels:
+        severity: critical
+        noc_severity: p1
+        service: sherlock
+      annotations:
+        summary: "[Redis RAM Usage]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }}% "
+
+    - alert: RedisTooManyClientConnections
+      expr: (100 * (redis_connected_clients{job=~".*redis.*"} / redis_config_maxclients{job=~".*redis.*"})) > 90
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: sherlock
+      annotations:
+        summary: "[Redis Too Many Client Connections]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }}% "
+
+  

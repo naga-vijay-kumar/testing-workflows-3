@@ -1,0 +1,32 @@
+var db = 'freshdesk'
+
+
+var measurement = 'ruby_sidekiq_job_duration_seconds'
+
+var groupBy = ['region']
+
+var whereFilter = lambda: ("region" == 'ap-south-1')
+
+
+
+var data = stream
+    |from()
+        .database(db)
+        .measurement(measurement)
+        .groupBy(groupBy)
+        .where(whereFilter)
+    |window()
+        .period(5m)
+        .every(5m)
+        .align()
+        .fillPeriod()
+    |mean('0.9')
+        .as('value')
+
+data
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ]  [ sidekiq_job_duration_ind ] - {{ index .Fields "value" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/sidekiq_job_duration_ind')
+        .crit(lambda: "value" > 400)
+        .critReset(lambda: "value" < 400)
+        .topic('freshdesk')

@@ -1,0 +1,18 @@
+// Alert to trigger if events p95 for a component-account exceeds the threshold
+stream
+  |from()
+    .database('cre-freshdesk')
+    .measurement('cre_freshdesk_marketplace_stats')
+    .where (lambda: "c" == 'product_worker' OR "c" == 'external_event_worker')
+  |groupBy('a_id','c','region')
+  |window()
+    .period(1m)
+    .every(1m)
+  |mean('p95_duration')
+    .as('p95_mean')
+  |alert()
+    .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "c" }} ] [ {{ index .Tags "a_id" }} ] [ marketplace_events_p95_mean ] - {{ index .Fields "p95_mean" }} {{ .Level }}')
+    .crit(lambda: "p95_mean" >= 500)
+    .critReset(lambda: "p95_mean" < 500)
+    .stateChangesOnly()
+    .topic('cre-freshdesk')

@@ -1,0 +1,19 @@
+
+//Alert when container memory happen
+stream
+    |from()
+        .database('staging-freshid')
+        .measurement('cloudwatch_aws_rds')
+    |groupBy('db_instance_identifier')
+    |where(lambda: 'db_instance_identifier'!='freshid-staging-new' AND 'db_instance_identifier' != 'freshworks')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('network_receive_throughput_average')
+         .as('network_receive_throughput_avg')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "host" }} ] [ network_receive_throughput_average ] - {{ index .Fields "network_receive_throughput_average" }} {{ .Level }}')
+        .crit(lambda: "network_receive_throughput_avg" > 1073741824 )
+        .critReset(lambda: "network_receive_throughput_avg" < 996147200)
+        .stateChangesOnly()
+        .topic('staging-freshid')

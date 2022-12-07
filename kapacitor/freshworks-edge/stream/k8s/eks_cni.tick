@@ -1,0 +1,19 @@
+// TODO: Add alerts for ipamd errors etc
+
+stream
+    |from()
+        .database('freshworks-edge')
+        .measurement('aws_vpc')
+    |groupBy('region', 'k8s_cluster_name', 'subnet_id')
+    |window()
+        .period(10m)
+        .every(10m)
+    |min('available_ip_address')
+        .as('available_ips')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "subnet_id" }} ] [ eks_cni ] - {{ index .Fields "available_ips" }} {{ .Level }}')
+        .crit(lambda: "available_ips" <= 20)
+        .critReset(lambda: "available_ips" > 20)
+        .id('{{ .Name }}:{{ .Group }}/eks_cni')
+        .stateChangesOnly()
+        .topic('freshworks-edge')

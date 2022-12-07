@@ -1,0 +1,10 @@
+stream
+  |from()
+    .database('haystack')
+    .measurement('cloudwatch_aws_kinesis')
+  |where(lambda: "group" == 'pipeline_poller' AND "unit" == 'milliseconds' AND isPresent("get_records._iterator_age_milliseconds_maximum"))
+  |groupBy('region','stream_name')
+  |deadman(0.0,300s)
+    .message('[ {{ .Time }} ] [ {{ index .Tags "region"}} ] [ {{ index .Tags "stream_name" }} ] [ stream_processing ] [ {{ if eq .Level "OK" }}alive{{ else }}dead{{ end }} ] [{{ index .Fields "emitted" }} points [ {{ .Level }} ]')
+    .stateChangesOnly()
+    .topic('haystack')

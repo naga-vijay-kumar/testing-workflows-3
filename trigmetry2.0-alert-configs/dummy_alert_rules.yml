@@ -1,0 +1,25 @@
+groups:
+- name: Dummy Alert
+  rules:
+  - alert: Watchdog
+    annotations:
+      summary: This alert is just to test entire alerting pipeline is functional.
+    expr: vector(1)
+    for: 10m
+    labels:
+      severity: info
+  - alert: Watchdog-2
+    annotations:
+      summary: This alert is just to test entire alerting pipeline is functional.
+    expr: vector(1)
+    for: 10m
+    labels:
+      severity: info
+  - alert: Watchdog-Test
+    annotations:
+      summary: This alert is just to test entire alerting pipeline is functional.
+    expr: vector(1)
+    for: 5m
+    labels:
+      severity: info
+      instance: silence-bot

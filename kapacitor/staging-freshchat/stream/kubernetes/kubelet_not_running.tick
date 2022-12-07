@@ -1,0 +1,13 @@
+stream
+    |from()
+        .database('staging-freshchat')
+        .measurement('procstat_lookup')
+        .where(lambda: "group" == 'k8s' AND "exe" == 'kubelet')
+        .groupBy('region', 'k8s_cluster_name', 'host', 'exe')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "host" }} ] [ k8s_worker_kubelet_proc_status ] - running process count is {{ index .Fields "running" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/k8s_worker_kubelet_proc_status')
+        .crit(lambda: "running" == 0)
+        .critReset(lambda: "running" == 1)
+        .stateChangesOnly()
+        .topic('staging-freshchat')

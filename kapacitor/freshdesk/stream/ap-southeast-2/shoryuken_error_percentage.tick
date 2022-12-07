@@ -1,0 +1,48 @@
+var db = 'freshdesk'
+
+
+var groupBy = ['region']
+
+var whereFilter = lambda: ("region" == 'ap-southeast-2')
+
+var total = stream
+    |from()
+        .database(db)
+        .measurement('ruby_shoryuken_jobs_total')
+        .groupBy(groupBy)
+        .where(whereFilter)
+    |window()
+        .period(5m)
+        .every(5m)
+        .align()
+        .fillPeriod()
+    |sum('gauge')
+        .as('value')
+
+var error = stream
+    |from()
+        .database(db)
+        .measurement('ruby_shoryuken_failed_jobs_total')
+        .groupBy(groupBy)
+        .where(lambda: ("region" == 'ap-southeast-2'))
+    |window()
+        .period(5m)
+        .every(5m)
+        .align()
+        .fillPeriod()
+    |sum('gauge')
+        .as('value')
+
+var data = total
+    |join(error)
+        .as('total', 'error')
+    |eval(lambda: "error.value" / "total.value")
+        .as('rate')
+
+data
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ]  [ freshdesk_shoryuken_error_percentage_aus ] - {{ index .Fields "rate" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/freshdesk_shoryuken_error_percentage_aus')
+        .crit(lambda: "rate" > 0.01)
+        .stateChangesOnly()
+        .topic('freshdesk')

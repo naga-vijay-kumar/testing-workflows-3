@@ -1,0 +1,238 @@
+global:
+  resolve_timeout: 2h
+  slack_api_url: https://hooks.slack.com/services/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
+  smtp_from: 'haystack_mail'
+  smtp_auth_username: 'sg_username'
+  smtp_smarthost: 'server_smarthost'
+  smtp_auth_password: 'sg_password'
+
+
+templates:
+- '*.tmpl'
+
+receivers:
+- name: email-receiver
+  email_configs:
+  - to: 'helpdesk@platforms-alerts.freshservice.com,sivatarun.ponnada@freshworks.com'
+    send_resolved: true
+
+
+- name: default-receiver
+  slack_configs:
+  - channel: '#haystack-prod-alerts'
+    send_resolved: true
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+    title: |-
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }}  {{ .CommonLabels.job }}  [{{ .CommonLabels.severity }}]            
+    text: >-
+      {{ range .Alerts -}}
+      *Alert:* {{ .Annotations.summary }}
+      {{ end }}
+
+
+- name: trace-alerts-receiver
+  slack_configs:
+  - channel: '#haystack-trace-alerts'
+    api_url: 'https://hooks.slack.com/services/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'
+    send_resolved: true
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+    title: |-
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }}  {{ .CommonLabels.job }}  [{{ .CommonLabels.severity }}]
+    text: >-
+      {{ range .Alerts -}}
+      *Alert:* {{ .Annotations.summary }}
+      {{ end }}
+
+
+
+- name: uf-alerts-receiver
+  slack_configs:
+  - channel: '#haystack-uf-alerts'
+    api_url: 'https://hooks.slack.com/services/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'
+    send_resolved: true
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+    title: |-
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }}  {{ .CommonLabels.job }}  [{{ .CommonLabels.severity }}]
+    text: >-
+      {{ range .Alerts -}}
+      *Alert:* {{ .Annotations.summary }}
+      {{ end }}
+
+
+- name: k8s-alerts-receiver
+  slack_configs:
+  - channel: '#haystack-k8s-alerts'
+    api_url: 'https://hooks.slack.com/services/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'
+    send_resolved: true
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+    title: |-
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }}  {{ .CommonLabels.job }}  [{{ .CommonLabels.severity }}]
+    text: >-
+      {{ range .Alerts -}}
+      *Alert:* {{ .Annotations.summary }}
+      {{ end }}
+
+
+- name: chat-bot-notification-alerts-receiver
+  slack_configs:
+    - channel: '#fp-haystack-production-oncall'
+      api_url: 'https://hooks.slack.com/services/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'
+      send_resolved: true
+      username: '{{ template "slack.default.username" . }}'
+      color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+      title: |-
+        [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }}:
+      text: >-
+        {{ range .Alerts -}}
+        {{ "\n" }}*Alert:* {{ .Annotations.summary }}
+        {{ end }}
+
+- name: clickhouse-alerts-receiver
+  slack_configs:
+  - channel: '#haystack-clickhouse-alerts'
+    api_url: 'https://hooks.slack.com/services/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'
+    send_resolved: true
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+    title: |-
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }}  {{ .CommonLabels.job }}  [{{ .CommonLabels.severity }}]
+    text: >-
+      {{ range .Alerts -}}
+      *Alert:* {{ .Annotations.summary }}
+      {{ end }}
+
+- name: log-alerts-receiver
+  email_configs:
+  - to: 'Sreevani.Karasala@freshworks.com,aravind.musigumpula@freshworks.com'
+    send_resolved: true
+  slack_configs:
+  - channel: '#haystack-prod-alerts'
+    send_resolved: true
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+    title: |-
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }}  {{ .CommonLabels.job }}  [{{ .CommonAnnotations.severity }}]
+    text: >-
+      {{ range .Alerts -}}
+      *Alert:* {{ .Annotations.summary }}
+      *Description:* {{ .Annotations.description }}
+      {{ end }}
+      
+- name: test-sns-reciever
+  email_configs:
+    - to: shaik.shakeel@freshworks.com
+      send_resolved: true
+  sns_configs:
+    - topic_arn: arn:aws:sns:us-east-1:932455973325:trigmetry-am
+      sigv4:
+        region: us-east-1
+
+
+- name: ch-elastalert-receiver
+  slack_configs:
+  - channel: '#haystack-crit-alerts'
+    api_url: 'https://hooks.slack.com/services/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'
+    send_resolved: true
+    username: '{{ template "slack.default.username" . }}'
+    color: '{{ if and (eq .Status "firing") (eq .CommonLabels.severity "warning") }}warning{{ else if eq .Status "firing"}}danger{{ else }}good{{ end }}'
+    title: |-
+      [{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}]  {{ .CommonLabels.alertname }}  {{ .CommonLabels.job }} {{ .CommonLabels.test }}   [{{ .CommonAnnotations.severity }}]
+    text: >-
+      {{ range .Alerts -}}
+      *Alert:* {{ .Annotations.summary }}
+      *Description:* {{ .Annotations.description }}
+      {{ end }}
+
+
+
+- name: trigmetry-meta-alerts-receiver
+
+route:
+  group_by:
+  - alertname
+  - job
+  - instance
+  - region
+  - noc_severity
+  group_interval: 1m
+  group_wait: 10s
+  receiver: default-receiver
+  repeat_interval: 6h
+  routes:
+  - match_re:
+      noc_severity: p0
+    receiver: 'email-receiver'
+    repeat_interval: 4h
+    group_by: ['...']  
+    continue: true  
+  - match_re:
+      job: jaeger-collector|jaeger-query|trace-proxy|trace-worker|staging-jaeger-collector|stage-trace-proxy|stage-jaeger-query
+    receiver: 'trace-alerts-receiver'
+  - match_re:
+      stream_name: common_haystack_traces|common_haystack_staging_traces|.*haystack_rum
+    receiver: 'trace-alerts-receiver'
+  - match_re:  
+      job: envoy|common-envoy
+    group_by: [envoy_cluster_name,region,instance,alertname]
+    receiver: 'default-receiver'
+  - match_re:
+      cluster: .*trace.*     #for trace clusters node level metrics
+    group_by: [stack,layer,instance,region,cluster,alertname]
+    receiver: 'trace-alerts-receiver' 
+  - match_re:
+      stack: .*trace.*     #for trace clusters node level metrics
+    group_by: [stack,layer,instance,region,alertname]
+    receiver: 'trace-alerts-receiver'   
+  - match_re:
+      layer: .*trace.*     #for trace service mahcines node level metrics
+    group_by: [stack,layer,instance,region,alertname]
+    receiver: 'trace-alerts-receiver'
+  - match_re:
+      job: uf-elasticsearch|uf-worker|uf-consumer|uf-proxy
+    receiver: 'uf-alerts-receiver'
+  - match_re:
+      job: ".*rum-worker.*|.*collector.*" 
+    receiver: 'trace-alerts-receiver'
+  - match_re:
+      pod: ".*collector.*"
+    receiver: 'trace-alerts-receiver'
+  - match_re:
+      job: ".*rum-proxy.*|.*public-metrics-proxy.*|.*discovery.*|.*redis.*" 
+    receiver: 'trace-alerts-receiver'
+  - match_re:
+      namespace: ".*cortex-services.*"
+    receiver: 'trigmetry-meta-alerts-receiver'
+  - match_re:
+      job: kubelet|cadvisor|k8s-logstash|auto-scaler|k8s-control-plane|amazon-vpc-cni|kube-state
+    receiver: 'k8s-alerts-receiver'
+  - match_re:
+      app: chat-bot
+    receiver: 'chat-bot-notification-alerts-receiver'
+    # How long to wait before sending an alert that has been added to a group for which there has already been a notification.
+    group_interval: 1h
+  - match_re:
+      instance: .*clickhouse.*|.*zookeeper.*     #for trace clusters node level metrics
+    group_by: [stack,layer,instance,region,alertname]
+    receiver: 'clickhouse-alerts-receiver'  
+  - match_re:
+      noc_severity: p0
+    receiver: 'default-receiver'
+  - match_re:
+      job: log_alerts
+      service: "envoy"  
+    receiver: log-alerts-receiver
+  - match_re:
+      job: log_alerts
+      service: "discovery"  
+    receiver: log-alerts-receiver    
+  - match_re:
+      job: log_alerts
+      service: "rum"  
+    receiver: log-alerts-receiver     
+  - match_re:
+      job: log_alerts
+    receiver: 'ch-elastalert-receiver'

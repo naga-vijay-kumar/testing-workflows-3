@@ -1,0 +1,31 @@
+# Alerts defined on container high resource utilization 
+# Currently alerts configured for collector pods. 
+# Edit filter regex field to enable alerts for other pods. 
+groups:
+  - name: Kubernetes Pod Resource Utilization Alerts
+    rules:
+      - alert: PodMemUsage90Percent
+        expr: 100*(sum(container_memory_working_set_bytes{layer=~".*collector.*", image!=""}) by (pod,layer,region)/ sum (container_spec_memory_limit_bytes{layer=~".*collector.*"}) by (pod,layer,region)) > 90
+        for: 2m
+        labels:
+          severity: critical
+          noc_severity: p0
+          service: Kubernetes
+        annotations:
+          summary: "Pod memory usage crossed 90% for: [{{ $labels.pod }}] [{{ $labels.region }}] - {{ $value }} "
+      - alert: PodMemUsage85Percent
+        expr: 100*(sum(container_memory_working_set_bytes{layer=~".*collector.*", image!=""}) by (pod,layer,region)/ sum (container_spec_memory_limit_bytes{layer=~".*collector.*"}) by (pod,layer,region)) > 85
+        for: 2m
+        labels:
+          severity: warning
+          noc_severity: p1
+        annotations:
+          summary: "Pod memory usage crossed 85% for: [{{ $labels.pod }}] [{{ $labels.region }}] - {{ $value }} "
+      - alert: PodHighCpuLoad
+        expr: 100 * (sum(rate(container_cpu_usage_seconds_total{layer=~".*collector.*", image!=""}[5m])) by (region,pod)/ avg(kube_pod_container_resource_limits{resource="cpu",container=~"collector"}) by (region,pod)) > 95
+        for: 10m
+        labels:
+          severity: warning
+          noc_severity: p1
+        annotations:
+          summary: "Pod cpu utilization is High: [{{ $labels.pod }}] [{{ $labels.region }}] - {{ $value }} "

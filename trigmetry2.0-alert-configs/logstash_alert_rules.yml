@@ -1,0 +1,139 @@
+groups:
+- name: Logstash Alerts
+  rules:
+    - alert: LogstashJvmUsageTooHigh
+      expr: sum(abs(logstash_jvm_mem_heap_used_percent{job!~"trace-worker"})) by (layer, instance, region) > 90
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations:
+        summary: "[JVM usage]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }}% "
+
+    - alert: LogstashNotProcessing
+      expr: sum(rate(logstash_events_in{job!~"trace-worker",layer!~".*staging.*|.*meta.*|.*sherlock.*"}[5m])) by (instance, job, region, layer, pod) > 0 and sum(rate(logstash_events_out{job!~"trace-worker",layer!~".*staging.*|.*meta.*|.*sherlock.*"}[5m])) by (instance, job, region, layer, pod) == 0
+      for: 7m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Logs
+      annotations:
+        summary: "[Logstash events processing for group]: [{{ $labels.job }}] [{{ $labels.instance }}]  [{{ $labels.region }}] - {{ $value }} "
+ 
+    - alert: TracingLogstashNotProcessing
+      expr: sum(rate(logstash_events_in{layer=~".*sherlock-ch-common*"}[5m])) by (instance, job, region, layer, pod) > 0 and sum(rate(logstash_events_out{layer=~".*sherlock-ch-common*"}[5m])) by (instance, job, region, layer, pod) == 0
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Traces
+      annotations:
+        summary: "[Logstash events processing for group]: [{{ $labels.job }}] [{{ $labels.instance }}]  [{{ $labels.region }}] - {{ $value }} "
+
+    - alert: LogstashStreamDead
+      expr: avg(cloudwatch_aws_kinesis_get_records__records_sum{stream_name!~".*traces"}) by (region,stream_name) == 0 and sum(rate(cloudwatch_aws_kinesis_incoming_records_sum{stream_name!~".*traces"}[5m])) by (region,stream_name,job) > 0
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p0
+      annotations: 
+        summary: "[Trace stream dead] [{{ $labels.region }}]  [{{ $labels.dimension_StreamName }}] "  
+
+    - alert: LogstashProcessDead
+      expr: count by (region,stack,layer,host)(logstash_events_in{host!~".*clickhouse.*", layer!~".*rum.*|.*sherlock.*|.*trace.*|.*staging.*|.*experiment.*|.*meta.*"} offset 1h ) unless count by (region,stack,layer,host)(logstash_events_in{host!~".*clickhouse.*", layer!~".*rum.*|.*sherlock.*|.*trace.*|.*staging.*|.*meta.*"}) > 0
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Logs
+      annotations: 
+        summary: "[Logstash process dead] [{{ $labels.region }}] [{{ $labels.stack }}]  [{{ $labels.layer }}] [{{ $labels.host }}] "   
+
+    - alert: TracingLogstashProcessDead
+      expr: count by (region,stack,layer,host)(logstash_events_in{host!~".*clickhouse.*", layer=~".*rum.*|.*sherlock.*|.*trace.*", layer!~"trace-logstash-meta|.*staging.*"} offset 1h ) unless count by (region,stack,layer,host)(logstash_events_in{host!~".*clickhouse.*", layer=~".*rum.*|.*sherlock.*|.*trace.*", layer!~"trace-logstash-meta|.*staging.*"}) > 0
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Sherlock
+      annotations: 
+        summary: "[Logstash process dead] [{{ $labels.region }}] [{{ $labels.stack }}]  [{{ $labels.layer }}] [{{ $labels.host }}] " 
+
+    - alert: StagingTracingLogstashProcessDead
+      expr: count by (region,stack,layer,host)(logstash_events_in{host!~".*clickhouse.*", layer=~".*rum.*|.*sherlock.*|.*trace.*", layer=~"trace-logstash-meta|.*staging.*"} offset 1h ) unless count by (region,stack,layer,host)(logstash_events_in{host!~".*clickhouse.*", layer=~".*rum.*|.*sherlock.*|.*trace.*", layer=~"trace-logstash-meta|.*staging.*"}) > 0
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p1
+        service: Sherlock
+      annotations: 
+        summary: "[Logstash process dead] [{{ $labels.region }}] [{{ $labels.stack }}]  [{{ $labels.layer }}] [{{ $labels.host }}] "           
+
+    - alert: StagingLogstashProcessDead
+      expr: count by (region,stack,layer,host)(logstash_events_in{layer=~".*staging.*"} offset 1h ) unless count by (region,stack,layer,host)(logstash_events_in{host!~".*clickhouse.*", layer=~".*rum.*|.*sherlock.*|.*trace.*"}) > 0
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p1
+      annotations: 
+        summary: "[Logstash process dead] [{{ $labels.region }}] [{{ $labels.stack }}]  [{{ $labels.layer }}] [{{ $labels.host }}] "   
+
+    - alert: ExperimentLogstashProcessDead
+      expr: count by (region,stack,layer,host)(logstash_events_in{host=~".*experiment.*", layer="worker-experiment"} offset 1h ) unless count by (region,stack,layer,host)(logstash_events_in{host!~".*clickhouse.*", layer!~".*rum.*|.*sherlock.*|.*trace.*|.*staging.*"}) > 0
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p2
+        service: Logs
+      annotations: 
+        summary: "[Logstash process dead] [{{ $labels.region }}] [{{ $labels.stack }}]  [{{ $labels.layer }}] [{{ $labels.host }}] "  
+
+    - alert: DynamoWriteThrottled
+      expr: cloudwatch_aws_dynamo_db_write_throttle_events_sum > 0
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p2
+        service: Logs
+      annotations: 
+        summary: "[Dynamodb Writes throttled] [{{ $labels.region }}] [{{ $labels.table_name }}]" 
+- name: RUM Logstash Alerts
+  rules:
+    - alert: RUMLogstashJvmUsageTooHigh
+      expr: sum(abs(logstash_jvm_mem_heap_used_percent{job=~"k8s-logstash",layer=~"ch-rum.*"})) by (layer, instance, region) > 90
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p2
+        service: Sherlock
+      annotations:
+        summary: "[JVM usage]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }}% "
+
+    - alert: RUMLogstashNotProcessing
+      expr: sum(rate(logstash_events_in{job=~"k8s-logstash",layer=~"ch-rum.*"}[5m])) by (instance, job, region, layer, pod) > 0 and sum(rate(logstash_events_out{job=~"k8s-logstash",layer=~"ch-rum.*"}[5m])) by (instance, job, region, layer, pod) == 0
+      for: 7m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Sherlock
+      annotations:
+        summary: "[Logstash events processing for group]: [{{ $labels.job }}] [{{ $labels.instance }}]  [{{ $labels.region }}] - {{ $value }} "
+
+    - alert: RUMLogstashStreamDead
+      expr:  avg(cloudwatch_aws_kinesis_get_records__records_sum{stream_name=~".*haystack_rum"}) by (region,stream_name) == 0 and sum(rate(cloudwatch_aws_kinesis_incoming_records_sum{stream_name=~".*haystack_rum"}[5m])) by (region,stream_name,job) > 0
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Sherlock        
+      annotations: 
+        summary: "[Logstash kinesis stream dead] [{{ $labels.region }}]  [{{ $labels.dimension_StreamName }}] "  
+
+    - alert: RUMLogstashProcessDead
+      expr: count by (region,stack,layer,host)(logstash_events_in{job=~"k8s-logstash",layer=~"ch-rum.*"} offset 1h ) unless count by (region,stack,layer,host)(logstash_events_in{job=~"k8s-logstash",layer=~"ch-rum.*"}) > 0
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Sherlock        
+      annotations: 
+        summary: "[Logstash process dead] [{{ $labels.region }}] [{{ $labels.stack }}]  [{{ $labels.layer }}] [{{ $labels.host }}] "     

@@ -1,0 +1,19 @@
+
+//Alert when container memory happen
+stream
+    |from()
+        .database('staging-freshid')
+        .measurement('cloudwatch_aws_rds')
+    |groupBy('db_instance_identifier')
+    |where(lambda: 'db_instance_identifier'!='freshid-staging-new' AND 'db_instance_identifier' != 'freshworks')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('write_iops_average')
+         .as('write_iops_avg')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "host" }} ] [ write_iops_average ] - {{ index .Fields "write_iops_average" }} {{ .Level }}')
+        .crit(lambda: "write_iops_avg" > 1000 )
+        .critReset(lambda: "write_iops_avg" < 950)
+        .stateChangesOnly()
+        .topic('staging-freshid')

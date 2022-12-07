@@ -1,0 +1,18 @@
+
+//Alert when container memory happen
+stream
+    |from()
+        .database('staging-freshid')
+        .measurement('cloudwatch_aws_ebs')
+    |groupBy('region', 'k8s_cluster_name', 'host')
+    |window()
+        .period(10m)
+        .every(10m)
+    |sum('volume_total_write_time_sum')
+         .as('write_time_sum')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "host" }} ] [ volume_total_write_time ] - {{ index .Fields "volume_total_write_time_sum" }} {{ .Level }}')
+        .crit(lambda: "write_time_sum" > 300 )
+        .critReset(lambda: "write_time_sum" < 250)
+        .stateChangesOnly()
+        .topic('staging-freshid')

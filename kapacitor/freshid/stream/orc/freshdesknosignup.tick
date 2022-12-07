@@ -1,0 +1,17 @@
+//Alert when no signups for 60 minutes
+stream
+    |from()
+        .database('freshid')
+        .measurement('nginx_response_2xx')
+    |where(lambda: "path" == '/v2/signup/freshdesk')
+    |window()
+        .period(60m)
+        .every(60m)
+    |count('value')
+        .as('2xx_count')
+    |alert()
+        .message('[ {{ .Time }} [ freshdesk_2xx_nosignups ] - {{ index .Fields "freshdesk_2xx_nosignups" }} {{ .Level }}')
+        .crit(lambda: "2xx_count" <= 0 )
+        .critReset(lambda: "2xx_count" > 0)
+        .stateChangesOnly()
+        .topic('freshid')
