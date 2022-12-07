@@ -14,8 +14,3 @@
           "summary": "Endpoint {{ $labels.instance }} down"
 
 
-
-
-
-
-
