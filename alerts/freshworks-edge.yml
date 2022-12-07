@@ -1,0 +1,33 @@
+alert_params:
+  "backend_errors":  #would make it generic for all backend types
+    type: any
+    index: freshworks-edge*
+    aggregation:
+      minutes: 1
+    filter:
+      - query:
+          query_string:
+            query: kubernetes.container.name:"treasurer" AND level:"ERROR" AND message:stack
+    alert_subject: ""
+    alerta_environment: freshworks-edge
+    include:
+      - kubernetes.container.name
+      - kubernetes.namespace
+      - cloud.region
+      - time
+      - level
+      - lgr
+      - thread
+      - msg
+      - stack
+#    alert_subject: "[{0}] Error occurred for {1} in {2} at {3}"
+#    alert_subject_args:
+#      - kubernetes.container.name
+#      - kubernetes.namespace
+#      - cloud.region
+#      - time
+#    alert_missing_value: ""
+#    alerta_severity: major
+#    alerta_text: |
+#    {time} {level} {lgr} [{thread}] {msg}
+#    {stack}

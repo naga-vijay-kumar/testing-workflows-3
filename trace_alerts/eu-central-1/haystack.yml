@@ -1,0 +1,10 @@
+sherlock_dummy_alert_error_rate:  
+        threshold: "0"
+        duration: "5"
+        run_every: 360
+        enabled: 'true'
+        sampling: "20"
+        priority: "P1"
+        filter: "process.serviceName:*"
+        url: "https://metrics.haystack.es/d/1fANC_Hnk/sherlock-monitoring?orgId=6"
+

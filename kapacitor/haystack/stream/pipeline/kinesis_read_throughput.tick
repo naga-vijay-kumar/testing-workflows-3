@@ -1,0 +1,13 @@
+stream
+  |from()
+    .database('haystack')
+    .measurement('cloudwatch_aws_kinesis')
+  |where(lambda: "group" == 'pipeline_poller' AND "unit" == 'count' AND isPresent("read_provisioned_throughput_exceeded_sum"))
+  |groupBy('region','stream_name')
+  |stateCount(lambda: "read_provisioned_throughput_exceeded_sum" >= 500)
+  |alert()
+    .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "stream_name" }} ][ read_throughput ] - {{ index .Fields "read_provisioned_throughput_exceeded_sum" }} {{ .Level }}')
+    .crit(lambda: "state_count" >= 10)
+    .critReset(lambda: "state_count" <= 1)
+    .stateChangesOnly()
+    .topic('haystack')

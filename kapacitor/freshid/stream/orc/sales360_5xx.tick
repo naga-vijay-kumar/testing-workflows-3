@@ -1,0 +1,17 @@
+//Alert when freshdesk5xx
+stream
+    |from()
+        .database('freshid')
+        .measurement('nginx_response_5xx')
+    |where(lambda: "path" == '/v2/signup/bundle/sales360')
+    |window()
+        .period(60m)
+        .every(60m)
+    |count('value')
+        .as('5xx_count')
+    |alert()
+        .message('[ {{ .Time }} [ sales360_5xx ] - {{ index .Fields "sales360_5xx" }} {{ .Level }}')
+        .crit(lambda: "5xx_count" >= 10 )
+        .critReset(lambda: "5xx_count" < 0)
+        .stateChangesOnly()
+        .topic('freshid')

@@ -1,0 +1,34 @@
+var mem = stream
+  |from()
+      .database('staging-freshchat')
+      .measurement('mem')
+      .where(lambda: "group" != 'k8s' AND !strHasPrefix("group", 'java'))
+      .groupBy('cluster','region','cluster','group','host')
+  |window()
+    .period(5m)
+    .every(1m)
+    .align()
+    .fillPeriod()
+
+var available = mem
+  |mean('available')
+    .as('available_mem')
+
+var total = mem
+  |mean('total')
+    .as('total_mem')
+
+available
+  |join(total)
+    .as('available_mem','total_mem')
+  |eval(lambda: (("total_mem.total_mem" - "available_mem.available_mem")/"total_mem.total_mem")*100.0)
+    .as('actual_used_percent')
+  |alert()
+    .message('[ {{ .Time }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "group" }} ][ {{ index .Tags "host" }} ] [ high_memory_used_percent ] - {{ index .Fields "actual_used_percent" }} {{ .Level }}')
+    .id('{{ .Name }}:{{ .Group }}/high_memory_used_percent')
+    .warn(lambda: "actual_used_percent" > 60)
+    .warnReset(lambda: "actual_used_percent" <= 59)
+    .crit(lambda: "actual_used_percent" > 70)
+    .critReset(lambda: "actual_used_percent" <= 69)
+    .stateChangesOnly()
+    .topic('staging-freshchat')

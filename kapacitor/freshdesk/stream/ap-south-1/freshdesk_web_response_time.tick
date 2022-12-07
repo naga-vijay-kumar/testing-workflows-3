@@ -1,0 +1,32 @@
+var db = 'freshdesk'
+
+
+var measurement = 'envoy.cluster.upstream_rq_time'
+
+var groupBy = ['region']
+
+var whereFilter = lambda: ("region" == 'ap-south-1') AND ("envoy.cluster_name" == 'upstream_service') AND ("layer" =~ /fc-app/)   
+
+
+
+var data = stream
+    |from()
+        .database(db)
+        .measurement(measurement)
+        .groupBy(groupBy)
+        .where(whereFilter)
+    |window()
+        .period(5m)
+        .every(5m)
+        .align()
+        .fillPeriod()
+    |percentile('mean',90.0)
+        .as('value')
+
+data
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ]  [ freshdesk_web_response_time_ind ] - {{ index .Fields "value" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/freshdesk_web_response_time_ind')
+        .crit(lambda: "value" > 150)
+        .critReset(lambda: "value" < 150)
+        .topic('freshdesk')

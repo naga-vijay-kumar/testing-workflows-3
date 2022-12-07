@@ -1,0 +1,20 @@
+version: "prometheus/v1"
+service: "cortex"
+labels:
+  owner: "trigmetry"
+  repo: "freshworks/trigmetry"
+  tier: "2"
+slos:
+  # We allow failing (5xx) 1 request every 1000 requests (99.9%).
+  - name: "requests-availability"
+    objective: 99.999
+    description: "Common SLO based on availability for HTTP request responses."
+    sli:
+      events:
+        error_query: sum(rate(envoy_cluster_upstream_rq_xx{envoy_cluster_name="production-distributor",region="us-east-1",job!~"meta-common-envoy",envoy_response_code_class="5"}[{{.window}}]))
+        total_query: sum(rate(envoy_cluster_upstream_rq_total{envoy_cluster_name="production-distributor",region="us-east-1",job!~"meta-common-envoy"}[{{.window}}]))
+    alerting:
+      page_alert:
+        disable: true
+      ticket_alert:
+        disable: true

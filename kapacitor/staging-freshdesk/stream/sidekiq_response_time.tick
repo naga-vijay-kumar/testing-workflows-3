@@ -1,0 +1,32 @@
+var db = 'staging-freshdesk'
+
+
+var measurement = 'ruby_sidekiq_job_duration_seconds'
+
+var groupBy = ['region']
+
+var whereFilter = lambda: ("region" == 'us-east-1')
+
+
+
+var data = stream
+    |from()
+        .database(db)
+        .measurement(measurement)
+        .groupBy(groupBy)
+        .where(whereFilter)
+    |window()
+        .period(5m)
+        .every(5m)
+        .align()
+        .fillPeriod()
+    |mean('0.9')
+        .as('value')
+
+data
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "group" }} ] [ sidekiq_job_duration ] - {{ index .Fields "value" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/sidekiq_job_duration')
+        .crit(lambda: "value" > 600)
+        .critReset(lambda: "value" < 600)
+        .topic('staging-freshdesk')

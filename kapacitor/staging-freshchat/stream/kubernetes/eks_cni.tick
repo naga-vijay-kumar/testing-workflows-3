@@ -1,0 +1,20 @@
+// TODO: Add alerts for ipamd errors etc
+
+stream
+    |from()
+        .database('staging-freshchat')
+        .measurement('aws_vpc')
+        .where(lambda: isPresent("available_ip_address"))
+        .groupBy('region', 'k8s_cluster_name', 'subnet_id')
+    |window()
+        .period(10m)
+        .every(10m)
+    |min('available_ip_address')
+        .as('available_ips')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "subnet_id" }} ] [ k8s_subnet_available_ips ] - {{ index .Fields "available_ips" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/k8s_subnet_available_ips')
+        .crit(lambda: "available_ips" <= 20)
+        .critReset(lambda: "available_ips" > 20)
+        .stateChangesOnly()
+        .topic('staging-freshchat')

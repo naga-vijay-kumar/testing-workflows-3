@@ -1,0 +1,19 @@
+// K8s doesn't expose ephemeral-storage metrics
+// Refer https://github.com/kubernetes/kubernetes/issues/69507
+// For now monitoring node volume
+stream
+    |from()
+        .database('staging-freshid')
+        .measurement('disk')
+    |groupBy('region', 'k8s_cluster_name', 'host')
+    |window()
+        .period(1m)
+        .every(1m)
+    |mean('used_percent')
+        .as('disk_used')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "host" }} ][ pod_volume ] - {{ index .Fields "pod_volume" }} {{ .Level }}')
+        .crit(lambda: "disk_used" >= 50)
+        .critReset(lambda: "disk_used" < 50)
+        .stateChangesOnly()
+        .topic('staging-freshid')

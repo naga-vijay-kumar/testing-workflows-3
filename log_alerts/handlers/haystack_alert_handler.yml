@@ -1,0 +1,25 @@
+haystack:
+    alert_handlers:
+        haystack_alert_slack:
+            type: slack
+            details:
+                channel: fp-haystack-frontend-alerts
+                webhook_url: "https://hooks.slack.com/services/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"
+        haystack_prod_alert_slack:
+            type: slack
+            details:
+                channel: haystack-prod-alerts
+                webhook_url: "https://hooks.slack.com/services/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"
+    alerts:
+        - rum_metrics_indexing_error:
+            alert_handlers:
+                - haystack_alert_slack
+            alert_class: logs
+        - envoy_configuration_error:
+            alert_handlers:
+                - haystack_prod_alert_slack
+            alert_class: logs
+        - envoy_error:
+            alert_handlers:
+                - haystack_prod_alert_slack
+            alert_class: logs

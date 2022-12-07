@@ -1,0 +1,17 @@
+//Alert when container memory happen
+stream
+    |from()
+        .database('staging-freshemail')
+        .measurement('cloudwatch_aws_ec2')
+    |groupBy('region', 'k8s_cluster_name', 'auto_scaling_group_name')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('status_check_failed_system_average')
+         .as('status_check_failure')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "auto_scaling_group_name" }} ] [ status_check_instance_failed ] - {{ index .Fields "status_check_instance_failed" }} {{ .Level }}')
+        .crit(lambda: "status_check_failure" == 1 )
+        .critReset(lambda: "status_check_failure" == 0)
+        .stateChangesOnly()
+        .topic('staging-freshemail')

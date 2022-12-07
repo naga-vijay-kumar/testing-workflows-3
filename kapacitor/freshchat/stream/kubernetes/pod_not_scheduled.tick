@@ -1,0 +1,15 @@
+// Alert when Pod is Notscheduled state
+stream
+    |from()
+        .database('freshchat')
+        .measurement('kube_state_metrics')
+        .where(lambda: isPresent("kube_pod_status_scheduled") AND "condition" == 'false')
+        .groupBy('region', 'k8s_cluster_name' , 'namespace', 'pod')
+    |stateCount(lambda: "kube_pod_status_scheduled" == 1 )
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "namespace" }} ] [ {{ index .Tags "pod" }} ] [ k8s_pod_not_scheduled ] - {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/k8s_pod_not_scheduled')
+        .crit(lambda: "state_count" > 10)
+        .critReset(lambda: "state_count" == -1)
+        .stateChangesOnly()
+        .topic('freshchat')

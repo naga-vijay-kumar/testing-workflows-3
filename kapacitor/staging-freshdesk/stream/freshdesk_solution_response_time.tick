@@ -1,0 +1,32 @@
+var db = 'staging-freshdesk'
+
+
+var measurement = 'envoy.cluster.upstream_rq_time'
+
+var groupBy = ['region']
+
+var whereFilter = lambda: ("region" == 'us-east-1') AND ("envoy.cluster_name" == 'upstream_service') AND ("layer" =~ /fc-app-solution/)
+
+
+
+var data = stream
+    |from()
+        .database(db)
+        .measurement(measurement)
+        .groupBy(groupBy)
+        .where(whereFilter)
+    |window()
+        .period(5m)
+        .every(5m)
+        .align()
+        .fillPeriod()
+    |percentile('mean',90.0)
+        .as('value')
+
+data
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "group" }} ] [ freshdesk_solution_response_time ] - {{ index .Fields "value" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/freshdesk_solution_response_time')
+        .crit(lambda: "value" > 250)
+        .critReset(lambda: "value" < 250)
+        .topic('staging-freshdesk')

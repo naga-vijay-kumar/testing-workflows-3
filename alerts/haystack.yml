@@ -1,0 +1,18 @@
+alert_params:
+  "influx_500":
+    type: frequency
+    num_events: 15
+    index: haystack*
+    top_count_keys:
+    - method
+    use_count_query: true
+    filter:
+      - query:
+           query_string:
+              query: '"msg":"[500] - \"timeout\""'
+    alert_subject: 'noticed 500 timeout on influx node'
+    alerta_severity: critical
+    timeframe:
+        minutes: 1
+    include: ["message", "product","host","group", "name"]
+    alerta_environment: haystack

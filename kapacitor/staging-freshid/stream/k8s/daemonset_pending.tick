@@ -1,0 +1,35 @@
+//Alert when daemonset stays pending
+
+var daemonset_desired = stream
+    |from()
+        .database('staging-freshid')
+        .measurement('kube_daemonset_status_desired_number_scheduled')
+    |groupBy('region', 'k8s_cluster_name', 'daemonset')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('gauge')
+        .as('daemonsetExpected')
+
+var daemonset_ready = stream
+    |from()
+        .database('staging-freshid')
+        .measurement('kube_daemonset_status_number_ready')
+    |groupBy('region', 'k8s_cluster_name', 'daemonset')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('gauge')
+        .as('daemonsetActual')
+
+daemonset_ready
+    |join(daemonset_desired)
+        .as( 'daemonset_readyCount', 'daemonset_desiredCount' )
+    |eval(lambda: float("daemonset_readyCount.value") / float("daemonset_desiredCount.value") )
+         .as('value_diff')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "daemonset" }} ] [ daemonset_pending ] - {{ index .Fields "daemonset_pending" }} - {{ .Level }}')
+        .crit(lambda: "value_diff" <= 0.98 )
+        .critReset(lambda: "value_diff" == 1 )
+        .stateChangesOnly()
+        .topic('staging-freshid')
