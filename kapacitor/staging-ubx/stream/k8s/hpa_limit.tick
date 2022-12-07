@@ -1,0 +1,36 @@
+//Alert when hpa limit crosses 85 percent
+
+var hpa_max = stream
+    |from()
+        .database('staging-ubx')
+        .measurement('kube_hpa_spec_max_replicas')
+    |groupBy('region', 'k8s_cluster_name', 'hpa')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('gauge')
+        .as('hpaMax')
+
+var hpa_desired = stream
+    |from()
+        .database('staging-ubx')
+        .measurement('kube_hpa_status_desired_replicas')
+    |groupBy('region', 'k8s_cluster_name', 'hpa')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('gauge')
+        .as('hpadesired')
+
+hpa_desired
+    |join(hpa_max)
+        .as('hpaDesiredCount', 'hpaMaxCount')
+    |eval(lambda: float("hpaDesiredCount.value") / float("hpaMaxCount.value") )
+         .as('value_diff')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "hpa" }} ] [ hpa_limit ] - {{ index .Fields "hpa_limit" }} - {{ .Level }}')
+        .crit(lambda: "value_diff" >= 0.85 )
+        .critReset(lambda: "value_diff" <= 0.75 )
+        .stateChangesOnly()
+        .topic('staging-ubx')
+

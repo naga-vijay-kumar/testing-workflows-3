@@ -1,0 +1,35 @@
+var db = 'staging-freshdesk'
+
+
+var measurement = 'envoy.http.downstream_rq_xx'
+
+var groupBy = ['region']
+
+var whereFilter = lambda: ("region" == 'us-east-1') AND ("layer" =~ /fc-app/)
+
+
+
+var data = stream
+    |from()
+        .database(db)
+        .measurement(measurement)
+        .groupBy(groupBy)
+        .where(whereFilter)
+    |window()
+        .period(5m)
+        .every(5m)
+        .align()
+        .fillPeriod()
+    |sum('value')
+        .as('value')
+
+data
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "group" }} ] [ freshdesk_web_throughput ] - {{ index .Fields "value" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/freshdesk_web_throughput')
+        .warn(lambda: "value" > 2000)
+        .warnReset(lambda: "value" < 2000)
+        .crit(lambda: "value" > 2050)
+        .critReset(lambda: "value" < 2050)
+        .stateChangesOnly()
+        .topic('staging-freshdesk')

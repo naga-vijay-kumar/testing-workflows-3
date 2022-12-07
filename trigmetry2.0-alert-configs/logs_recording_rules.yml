@@ -1,0 +1,16 @@
+groups:
+- name: logs_recording_rules
+  interval: 5m
+  rules:
+    - record: product_region_job:com_freshworks_haystack_resources_ProxyResource_bytes_counter:sum5m
+      expr: sum by (product, region, job) (sum_over_time(com_freshworks_haystack_resources_ProxyResource_bytes_counter[5m]))
+    - record: product_region_job:com_freshworks_haystack_resources_ProxyResource_events_counter:sum5m
+      expr: sum by (product, region, job) (sum_over_time(com_freshworks_haystack_resources_ProxyResource_events_counter[5m]))
+
+- name: logs_recording_rules_15m
+  interval: 15m
+  rules:
+    - record: product_region_job:com_freshworks_haystack_resources_ProxyResource_bytes_counter:sum15m
+      expr: sum by (product, region, job) (sum_over_time(com_freshworks_haystack_resources_ProxyResource_bytes_counter[15m]))
+    - record: product_region_job:com_freshworks_haystack_resources_ProxyResource_events_counter:sum15m
+      expr: sum by (product, region, job) (sum_over_time(com_freshworks_haystack_resources_ProxyResource_events_counter[15m]))      

@@ -1,0 +1,18 @@
+//Alert when network rx error /Cable failure occurs
+stream
+    |from()
+        .database('mcr')
+        .measurement('kubernetes_node')
+    |groupBy('region', 'cluster', 'node_name')
+    |window()
+        .period(5m)
+        .every(5m)
+    |sum('network_rx_errors')
+        .as('network_rx_errors')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "node_name" }} ] [ network_rx_errors ] {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/network_rx_errors')
+        .crit(lambda: "network_rx_errors" >= 1)
+        .critReset(lambda: "pods" == 0)
+        .stateChangesOnly()
+        .topic('mcr')

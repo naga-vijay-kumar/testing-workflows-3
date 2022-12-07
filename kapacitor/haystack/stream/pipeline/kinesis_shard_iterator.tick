@@ -1,0 +1,13 @@
+stream
+  |from()
+    .database('haystack')
+    .measurement('cloudwatch_aws_kinesis')
+  |where(lambda: "group" == 'pipeline_poller' AND "unit" == 'milliseconds' AND isPresent("get_records._iterator_age_milliseconds_maximum"))
+  |groupBy('region','stream_name')
+  |stateCount(lambda: "get_records._iterator_age_milliseconds_maximum" >= 180000)
+  |alert()
+    .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "stream_name" }} ][ shard_iterator ] - {{ index .Fields "get_records._iterator_age_milliseconds_maximum" }} {{ .Level }}')
+    .crit(lambda: "state_count" >= 3)
+    .critReset(lambda: "state_count" <= 1)
+    .stateChangesOnly()
+    .topic('haystack')

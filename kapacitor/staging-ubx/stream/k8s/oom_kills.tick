@@ -1,0 +1,18 @@
+// Alert when a pod gets terminated due to OOM killing
+stream
+    |from()
+        .database('staging-ubx')
+        .measurement('kube_pod_container_status_terminated_reason')
+    |where(lambda: "reason" == 'OOMKilled')
+    |groupBy('region', 'k8s_cluster_name', 'namespace', 'pod', 'container')
+    |window()
+        .period(1m)
+        .every(1m)
+    |sum('gauge')
+        .as('oom_kills')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "namespace" }} ] [ {{ index .Tags "pod" }} ] [ {{ index .Tags "container"}} ] [ pom_kills  ] - {{ index .Fields "oom_kills" }} {{ .Level }}')
+        .crit(lambda: "oom_kills" > 0)
+        .critReset(lambda: "oom_kills" == 0)
+        .stateChangesOnly()
+        .topic('staging-ubx')

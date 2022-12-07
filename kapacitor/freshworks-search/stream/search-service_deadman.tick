@@ -1,0 +1,10 @@
+stream
+  |from()
+    .database('freshworks-search')
+    .measurement('cpu')
+  |where(lambda: "group" == 'search-service')
+  |groupBy('region','group','cluster_name','host')
+  |deadman(0.0,60s)
+    .message('[ {{ .Time }} ] [ {{ index .Tags "region"}} ] [ {{ index .Tags "group"}} ] [ {{ index .Tags "cluster_name"}} ] [ {{ index .Tags "host" }} ] [ metrics ] [ {{ if eq .Level "OK" }}alive{{ else }}dead{{ end }} ] [{{ index .Fields "emitted" }} points [ {{ .Level }} ]')
+    .stateChangesOnly()
+    .topic('freshworks-search')

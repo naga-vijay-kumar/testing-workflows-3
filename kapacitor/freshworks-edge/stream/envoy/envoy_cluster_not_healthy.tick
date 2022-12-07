@@ -1,0 +1,10 @@
+stream
+    |from()
+        .database('freshworks-edge')
+        .measurement('envoy_http_downstream_rq_completed')
+    |groupBy('region','k8s_cluster_name', 'tenant', 'envoy_http_conn_manager_prefix')
+    |deadman(4.0, 1m)
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "envoy_cluster_name" }} ] [ envoy_cluster_not_healthy ] - {{ .Level }}')
+        .topic('freshworks-edge')
+        .id('{{ .Name }}:{{ .Group }}/envoy_cluster_not_healthy')

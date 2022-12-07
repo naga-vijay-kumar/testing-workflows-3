@@ -1,0 +1,10 @@
+stream
+  |from()
+    .database('freshworks_search')
+    .measurement('elasticsearch_process')
+  |where(lambda: "group" == 'elasticsearch')
+  |groupBy('region','group','cluster_name','host')
+  |deadman(0.0,180s)
+    .message('[ {{ .Time }} ] [ {{ index .Tags "region"}} ] [ {{ index .Tags "host" }} ] [ elasticsearch_process ] [ {{ if eq .Level "OK" }}alive{{ else }}dead{{ end }} ] [{{ index .Fields "emitted" }} points [ {{ .Level }} ]')
+    .stateChangesOnly()
+    .topic('freshworks-search')

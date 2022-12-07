@@ -1,0 +1,18 @@
+groups:
+- name: traces_recording_rules_5m
+  interval: 5m
+  rules:
+    - record: com_freshworks_haystack_resources_TracingResource_traceevents_total:max_over5m
+      expr: max_over_time(com_freshworks_haystack_resources_TracingResource_traceevents_total{job="k8s-trace-proxy"}[5m])
+
+    - record: com_freshworks_haystack_resources_TracingResource_datasize_total:max_over5m
+      expr: max_over_time(com_freshworks_haystack_resources_TracingResource_datasize_total{job="k8s-trace-proxy"}[5m])
+
+- name: traces_recording_rules_15m
+  interval: 15m
+  rules:
+    - record: com_freshworks_haystack_resources_TracingResource_traceevents_total:max_over15m
+      expr: max_over_time(com_freshworks_haystack_resources_TracingResource_traceevents_total{job="k8s-trace-proxy"}[15m])
+
+    - record: com_freshworks_haystack_resources_TracingResource_datasize_total:max_over15m
+      expr: max_over_time(com_freshworks_haystack_resources_TracingResource_datasize_total{job="k8s-trace-proxy"}[15m])

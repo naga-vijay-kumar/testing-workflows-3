@@ -1,0 +1,108 @@
+groups:
+- name: Kubernetes Alert
+  rules:
+    - alert: UnscheduledPods
+      expr: sum(cluster_autoscaler_unschedulable_pods_count) by (region) > 0
+      for: 15m
+      labels:
+        severity: critical
+        noc_severity: p1
+        service: Kubernetes
+      annotations:
+        summary: "[Unscheduled pods]:  [{{ $labels.region }}] - {{ $value }}% "
+
+    - alert: KubePodCrashLooping
+      annotations:
+        summary: Pod is crash looping - {{ $labels.region }} {{ $labels.namespace }}/{{ $labels.pod }}
+      expr: >
+        sum(label_replace(increase(kube_pod_container_status_restarts_total{job="kube-state",pod!~".*staging.*|.*opensearch-dashboards-meta.*",namespace!~".*staging.*|.*opensearch-dashboards-meta.*"}[1m]),"replicaset", "$1","pod", "(.*-.*)(-).*")) by (replicaset,namespace,region) > 3
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Kubernetes
+
+    - alert: StagingKubePodCrashLooping
+      annotations:
+        summary: Pod is crash looping - {{ $labels.region }} {{ $labels.namespace }}/{{ $labels.pod }}
+      expr: >
+        sum(label_replace(increase(kube_pod_container_status_restarts_total{job="kube-state",pod=~".*staging.*",namespace=~".*staging.*"}[1m]),"replicaset", "$1","pod", "(.*-.*)(-).*")) by (replicaset,namespace,region) > 3
+      for: 15m
+      labels:
+        severity: critical
+        noc_severity: p1
+        service: Kubernetes
+
+    - alert: KubeNodeNotReady
+      annotations:
+        summary: Node is not ready - Cluster {{ $labels.region}}.
+      expr: >
+        kube_node_status_condition{job="kube-state",condition="Ready",status="true"} == 0
+      for: 15m
+      labels:
+        severity: warning
+        noc_severity: p1
+
+    - alert: StagingKubernetesReplicassetMismatch
+      expr: kube_replicaset_spec_replicas{namespace=~".*staging.*|.*meta.*", namespace!~".*opensearch-dashboards-meta.*"} != kube_replicaset_status_ready_replicas{namespace=~".*staging.*|.*meta.*", namespace!~".*opensearch-dashboards-meta.*"}
+      for: 5m
+      labels:
+        severity: warning
+        noc_severity: p1
+        service: Kubernetes
+      annotations:
+        summary: "Kubernetes ReplicasSet mismatch (instance {{ $labels.replicaset }}) - Cluster {{ $labels.region}}"
+
+    - alert: KubernetesReplicassetMismatch
+      expr: kube_replicaset_spec_replicas{namespace!~".*staging.*|.*meta.*|.*experiment.*|.*test.*",replicaset!~".*staging.*|.*meta.*|.*experiment.*|.*logstash.*|.*kibana.*|.*test.*"} != kube_replicaset_status_ready_replicas{namespace!~".*staging.*|.*meta.*|.*experiment.*|.*test.*",replicaset!~".*staging.*|.*meta.*|.*experiment.*|.*logstash.*|.*kibana.*|.*test.*"}
+      for: 7m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Kubernetes
+      annotations:
+        summary: "Kubernetes ReplicasSet mismatch (instance {{ $labels.replicaset }}) - Cluster {{ $labels.region}}"
+
+    - alert: LogstashKubernetesReplicassetMismatch
+      expr: kube_replicaset_spec_replicas{namespace!~".*staging.*|.*meta.*|.*experiment.*",namespace=~".*logstash.*",replicaset!~"..*staging.*|.*meta.*|.*experiment.*"} != kube_replicaset_status_ready_replicas{namespace!~".*staging.*|.*meta.*|.*experiment.*",namespace=~".*logstash.*",replicaset!~".*staging.*|.*meta.*|.*experiment.*"}
+      for: 18m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Kubernetes
+      annotations:
+        summary: "Logstash Kubernetes ReplicasSet mismatch (instance {{ $labels.replicaset }}) - Cluster {{ $labels.region}}"
+
+    - alert: KibanaKubernetesReplicassetMismatch
+      expr: kube_replicaset_spec_replicas{namespace!~".*staging.*|.*meta.*|.*experiment.*",namespace=~".*kibana.*",replicaset!~"..*staging.*|.*meta.*|.*experiment.*"} != kube_replicaset_status_ready_replicas{namespace!~".*staging.*|.*meta.*|.*experiment.*",namespace=~".*kibana.*",replicaset!~".*staging.*|.*meta.*|.*experiment.*"}
+      for: 9m
+      labels:
+        severity: critical
+        noc_severity: p0
+        service: Kubernetes
+      annotations:
+        summary: "Logstash Kubernetes ReplicasSet mismatch (instance {{ $labels.replicaset }}) - Cluster {{ $labels.region}}"
+
+
+    - alert: KubernetesDiskPressure
+      expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p1
+        service: Kubernetes
+      annotations:
+        summary: "Kubernetes disk pressure (instance {{ $labels.instance }}) - Cluster {{ $labels.region}}"
+
+    - alert: KubeletSyncError
+      expr: |
+        rate(kubelet_runtime_operations_errors_total{operation_type="exec_sync"}[1m]) * 60 > 1
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p1
+        service: Kubernetes
+      annotations:
+        summary: "Kubelet sync errors ({{ $labels.value }}) on node {{ $labels.instance }} in cluster {{$labels.region}}"
+
+

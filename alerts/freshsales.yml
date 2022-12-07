@@ -1,0 +1,182 @@
+alert_params:
+  "signup":
+    type: frequency
+    num_events: 5
+    index: freshsales*
+    top_count_keys:
+    - method
+    filter:
+      - query:
+           query_string:
+              query: '"controller=FdMultitenant::AccountsController, action=create" AND (status=500 OR status=501 OR status=502 OR status=503)'
+    alert_subject: 'noticed 500 responses in the last minute for freshsales signup requests'
+    alerta_severity: critical
+    timeframe:
+      hours: 1
+    include: ["message", "product", "host", "layer", "group", "name"]
+    alerta_environment: freshsales
+
+  "fabfile_deal_insights":
+    alert_subject: "INIT_FABFILE not executed in the last  75 minutes"
+    type: flatline
+    index: "freshsales*"
+    threshold: 1
+    timeframe:
+        minutes: 75
+    filter:
+      - query:
+          query_string:
+            query: "name: fsales_deal_insights_log AND message: INIT_FABFILE"
+    alerta_tags: []
+    alerta_severity: critical
+    alerta_environment: freshsales
+    forget_keys: true
+    query_delay:
+        minutes: 1
+    use_count_query: true
+
+  "make_dataset_deal_insights":
+    alert_subject: "INIT_MAKE_DATASET not executed in the last  60 minutes"
+    type: flatline
+    index: "freshsales*"
+    threshold: 1
+    timeframe:
+        minutes: 60
+    filter:
+      - query:
+          query_string:
+            query: "name: fsales_deal_insights_log AND message: INIT_MAKE_DATASET"
+    alerta_tags: []
+    alerta_severity: critical
+    alerta_environment: freshsales
+    forget_keys: true
+    query_delay:
+        minutes: 1
+    use_count_query: true
+
+  "sentiment_job_email_insights":
+    alert_subject: "INIT_SENTIMENT_JOB not executed in the last  75 minutes"
+    type: flatline
+    index: "freshsales*"
+    threshold: 1
+    timeframe:
+        minutes: 75
+    filter:
+      - query:
+          query_string:
+            query: "name: fsales_email_insights_log AND message: INIT_SENTIMENT_JOB"
+    alerta_tags: []
+    alerta_severity: critical
+    alerta_environment: freshsales
+    forget_keys: true
+    query_delay:
+        minutes: 1
+    use_count_query: true
+  
+  "runtime_etl_deal_insights":
+    alert_subject: "RUNTIME_ETL not executed in the last  60 minutes"
+    type: flatline
+    index: "freshsales*"
+    threshold: 1
+    timeframe:
+        minutes: 60
+    filter:
+      - query:
+          query_string:
+            query: "name: fsales_deal_insights_log AND message: Completed running RUNTIME_ETL"
+    alerta_tags: []
+    alerta_severity: critical
+    alerta_environment: freshsales
+    forget_keys: true
+    query_delay:
+        minutes: 1
+    use_count_query: true
+  
+  "runtime_pred_deal_insights":
+    alert_subject: "RUNTIME_PRED not executed in the last  60 minutes"
+    type: flatline
+    index: "freshsales*"
+    threshold: 1
+    timeframe:
+        minutes: 60
+    filter:
+      - query:
+          query_string:
+            query: "name: fsales_deal_insights_log AND message: Completed running RUNTIME_PRED"
+    alerta_tags: []
+    alerta_severity: critical
+    alerta_environment: freshsales
+    forget_keys: true
+    query_delay:
+        minutes: 1
+    use_count_query: true
+  
+  "runtime_ing_deal_insights":
+    alert_subject: "RUNTIME_ING not executed in the last  60 minutes"
+    type: flatline
+    index: "freshsales*"
+    threshold: 1
+    timeframe:
+        minutes: 60
+    filter:
+      - query:
+          query_string:
+            query: "name: fsales_deal_insights_log AND message: Completed running RUNTIME_ING"
+    alerta_tags: []
+    alerta_severity: critical
+    alerta_environment: freshsales
+    forget_keys: true
+    query_delay:
+        minutes: 1
+    use_count_query: true
+
+  "runtime_sentiment_job_email_insights":
+    alert_subject: "RUNTIME_SENTIMENT_JOB not executed in the last  60 minutes"
+    type: flatline
+    index: "freshsales*"
+    threshold: 1
+    timeframe:
+        minutes: 75
+    filter:
+      - query:
+          query_string:
+            query: "name: fsales_email_insights_log AND message: Completed running RUNTIME_SENTIMENT_JOB"
+    alerta_tags: []
+    alerta_severity: critical
+    alerta_environment: freshsales
+    forget_keys: true
+    query_delay:
+        minutes: 1
+    use_count_query: true
+
+  "dedupe_unusual_shut_down":
+    alert_subject: "Unusual shut down of Dedupe application "
+    type: frequency
+    index: "freshsales*"
+    num_events: 4
+    timeframe:
+      minutes: 1
+    filter:
+      - query:
+          query_string:
+            query: "name: fsales_dedupe_log AND message: Shutting down "
+    alerta_tags: []
+    alerta_severity: critical
+    alerta_environment: freshsales
+    forget_keys: true
+    
+  "account_dedupe_unusual_shut_down":
+    alert_subject: "Unusual shut down of Account Dedupe application "
+    type: frequency
+    index: "freshsales*"
+    num_events: 4
+    timeframe:
+      minutes: 1
+    filter:
+      - query:
+          query_string:
+            query: "name: fsales_account_dedupe_log AND message: Shutting down "
+    alerta_tags: []
+    alerta_severity: critical
+    alerta_environment: freshsales
+    forget_keys: true

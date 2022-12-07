@@ -1,0 +1,9 @@
+stream
+  |from()
+    .database('haystack')
+    .measurement('cpu')
+  |groupBy('region','group','host')
+  |deadman(0.0,180s)
+    .message('[ {{ .Time }} ] [ {{ index .Tags "region"}} ] [ {{ index .Tags "host" }} ] [ metrics ] [ {{ if eq .Level "OK" }}alive{{ else }}dead{{ end }} ] [{{ index .Fields "emitted" }} points [ {{ .Level }} ]')
+    .stateChangesOnly()
+    .topic('group')

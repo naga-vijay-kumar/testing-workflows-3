@@ -1,0 +1,17 @@
+//Alert when container restarts happen
+stream
+    |from()
+        .database('staging-freshid')
+        .measurement('kube_pod_container_status_restarts_total')
+    |groupBy('region', 'k8s_cluster_name', 'container', 'namespace')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('counter')
+        .as('restarts')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "container" }} ]  [ container_restarts ] - {{ index .Fields "container_restarts" }}- {{ .Level }}')
+        .crit(lambda: "restarts" >= 2 )
+        .critReset(lambda: "restarts" == 0)
+        .stateChangesOnly()
+        .topic('staging-freshid')

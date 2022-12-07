@@ -1,0 +1,50 @@
+var db = 'freshdesk'
+
+
+var measurement = 'envoy.http.downstream_rq_xx'
+
+var groupBy = ['region']
+
+var whereFilter = lambda: ("region" == 'ap-southeast-2') AND ("layer" =~ /fc-app/)
+
+var total = stream
+    |from()
+        .database(db)
+        .measurement(measurement)
+        .groupBy(groupBy)
+        .where(whereFilter)
+    |window()
+        .period(5m)
+        .every(5m)
+        .align()
+        .fillPeriod()
+    |sum('value')
+        .as('value')
+
+var error = stream
+    |from()
+        .database(db)
+        .measurement(measurement)
+        .groupBy(groupBy)
+        .where(lambda: ("region" == 'ap-southeast-2') AND ("envoy.response_code_class" == '5' ) AND ("layer" =~ /fc-app/))
+    |window()
+        .period(5m)
+        .every(5m)
+        .align()
+        .fillPeriod()
+    |sum('value')
+        .as('value')
+
+var data = total
+    |join(error)
+        .as('total', 'error')
+    |eval(lambda: "error.value" / "total.value")
+        .as('rate')
+
+data
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ]  [ freshdesk_error_percentage_aus ] - {{ index .Fields "rate" }} {{ .Level }}')
+        .id('{{ .Name }}:{{ .Group }}/freshdesk_error_percentage_aus')
+        .crit(lambda: "rate" > 0.0015)
+        .stateChangesOnly()
+        .topic('freshdesk')

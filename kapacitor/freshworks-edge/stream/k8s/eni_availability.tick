@@ -1,0 +1,23 @@
+// Alert when usable ENIs count falls below 1000
+var eni_threshold = 1000
+
+stream
+    |from()
+        .database('freshworks-edge')
+        .measurement('aws_vpc')
+    |eval(lambda: "eni_quota" - "eni_current")
+        .as('eni_remaining')
+        .keep()
+    |groupBy('region', 'k8s_cluster_name')
+    |window()
+        .period(1m)
+        .every(1m)
+    |min('eni_remaining')
+        .as('eni_available')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ eni_availability ] - {{ index .Fields "eni_available" }} {{ .Level }}')
+        .crit(lambda: "eni_available" <= eni_threshold)
+        .critReset(lambda: "eni_available" > eni_threshold)
+        .id('{{ .Name }}:{{ .Group }}/eni_availability')
+        .stateChangesOnly()
+        .topic('freshworks-edge')

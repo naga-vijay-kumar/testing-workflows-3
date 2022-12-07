@@ -1,0 +1,50 @@
+sherlock_dummy_alert_error_rate:  
+        threshold: "0"
+        duration: "5"
+        run_every: 360
+        enabled: 'true'
+        sampling: "20"
+        priority: "P1"
+        filter: "process.serviceName:*"
+        url: "https://metrics.haystack.es/d/1fANC_Hnk/sherlock-monitoring?orgId=6"
+        labels:
+                test: "test1"
+freshdesk_reports_error_rate:
+        threshold: "0"
+        duration: "5"
+        run_every: 5
+        enabled: 'true'
+        sampling: "20"
+        priority: "P1"
+        filter: "-exception.type:ActionController*RoutingError  AND process.serviceName:freshdesk_helpkit AND process.tag.host@name:fc-app-reports*"
+        url: "https://metrics.haystack.es/d/2xkcwiEMk/error-and-traces?orgId=2&refresh=1m&var-Filters_index=index.keyword%7C%3D~%7Cjaeger-span-write&var-serviceName=freshdesk_helpkit&var-shell=All&var-layer=fc-app-reports"
+xub_http_latency_response_time:
+        threshold: "1000000"
+        duration: "5"
+        run_every: 5
+        filter: process.serviceName:freshworks-rts_xub AND -tag.http@status_code:'1*'
+        enabled: 'true'
+xub_http_5xx_error_rate:
+        threshold: "1"
+        duration: "5"
+        run_every: 5
+        filter: process.serviceName:freshworks-rts_xub AND tag.http@status_code:'5*' AND -operationName:'/v1/user/where' AND -operationName:'/v1/user/fetch'
+        enabled: 'true'
+xub_http_policy_error_rate:
+        threshold: "5000"
+        duration: "5"
+        run_every: 5
+        filter: process.serviceName:freshworks-rts_xub AND -tag.http@status_code:'1*'
+        enabled: 'true'
+freshdesk_helpkit_example_frequency:
+        index: "traces*"
+        type: "frequency"
+        threshold: "5000"
+        num_events: "1"
+        duration: "1440"
+        run_every: 1
+        filter: process.serviceName:prestaging-visuals-data-service
+        enabled: 'true'
+
+
+

@@ -1,0 +1,6 @@
+groups:
+- name: logstash_recording_rules
+  rules:
+    - record: logstash_jvm_usage 
+      expr: sum(abs(logstash_jvm_mem_heap_used_percent{job="trace-worker"})) by (layer, instance, region)
+

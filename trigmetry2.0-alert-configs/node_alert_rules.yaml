@@ -1,0 +1,62 @@
+groups:
+- name: Node Alerts
+  rules:
+  - alert: InstanceDown
+    expr: count without (cpu)(node_cpu_seconds_total{mode="idle",instance!~".*time.*"} offset 1h ) unless count without (cpu)(node_cpu_seconds_total{mode="idle",instance!~".*time.*"}) > 0
+    for: 2m
+    labels:
+      severity: critical
+      noc_severity: p0
+    annotations:
+      summary: "Instance [{{ $labels.instance }}] [{{ $labels.region }}] [{{ $labels.stack }}] [{{ $labels.layer }}] was Down"
+  - alert: TimeBasedInstanceDown
+    expr: count without (cpu)(node_cpu_seconds_total{mode="idle",instance=~".*time.*"} offset 1h ) unless count without (cpu)(node_cpu_seconds_total{mode="idle",instance=~".*time.*"}) > 0
+    for: 2m
+    labels:
+      severity: warning
+      noc_severity: p2
+    annotations:
+      summary: "Time based Instance [{{ $labels.instance }}] [{{ $labels.region }}] [{{ $labels.stack }}] [{{ $labels.layer }}] was Down"
+  - alert: HostOutOfMemory
+    expr: (node_memory_MemFree_bytes{instance!~".*worker.*"} + node_memory_Cached_bytes{instance!~".*worker.*"} + node_memory_Buffers_bytes{instance!~".*worker.*"})/ node_memory_MemTotal_bytes{instance!~".*worker.*"} * 100 < 5
+    for: 5m
+    labels:
+      severity: warning
+      noc_severity: p2
+    annotations:
+      summary: "Host out of memory for Instance:[{{ $labels.instance }}] [{{ $labels.region }}] [{{ $labels.stack }}] [{{ $labels.layer }}] - Available:{{ printf \"%.1f\" $value }}%"
+  - alert: TracingHostOutOfDiskSpace
+    expr: (node_filesystem_avail_bytes{mountpoint="/data", cluster=~".*trace.*"}  * 100) / node_filesystem_size_bytes{mountpoint="/data", cluster=~".*trace.*"} < 10 
+    for: 5m
+    labels:
+      severity: critical
+      noc_severity: p0
+      instance: "{{$labels.instance}}"
+      service: Sherlock
+    annotations:
+      summary: "Host out of disk space for Instance:[{{ $labels.instance }}] [{{ $labels.region }}] - Available:{{ printf \"%.1f\" $value }}%"
+  - alert: HostOutOfDiskSpace
+    expr: (node_filesystem_avail_bytes{mountpoint="/data", cluster !~ ".*trace.*"}  * 100) / node_filesystem_size_bytes{mountpoint="/data", cluster !~ ".*trace.*"} < 10
+    for: 5m
+    labels:
+      severity: critical
+      noc_severity: p0
+      service: Logs
+    annotations:
+      summary: "Host out of disk space for Instance:[{{ $labels.instance }}] [{{ $labels.region }}] - Available:{{ printf \"%.1f\" $value }}%"
+  - alert: HostDiskUtilizationIsHigh
+    expr: (node_filesystem_avail_bytes{mountpoint="/data", cluster=~".*trace.*", instance=~".*cold.*"}  * 100) / node_filesystem_size_bytes{mountpoint="/data", cluster=~".*trace.*", instance=~".*cold.*"} < 15
+    for: 1h
+    labels:
+      severity: critical
+      noc_severity: p1
+    annotations:
+      summary: "Host disk utilization is >85% for Instance:[{{ $labels.instance }}] [{{ $labels.region }}] - Available:{{ printf \"%.1f\" $value }}%"
+  - alert: HostHighCpuLoad
+    expr: 100 - (avg by(job, instance, region) (rate(node_cpu_seconds_total{mode="idle",instance!~".*worker.*"}[5m])) * 100) > 95
+    for: 10m             
+    labels:
+      severity: warning
+      noc_severity: p2
+    annotations:
+      summary: "Host high CPU load for Instance:[{{ $labels.instance }}] [{{ $labels.region }}]  - Usage:{{ printf \"%.1f\" $value }}%"

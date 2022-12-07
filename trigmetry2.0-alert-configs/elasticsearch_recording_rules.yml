@@ -1,0 +1,9 @@
+groups:
+- name: elasticsearch_recording_rules
+  rules:
+    - record: elasticsearch_heap_usage 
+      expr: (elasticsearch_jvm_memory_used_bytes{area="heap"} / elasticsearch_jvm_memory_max_bytes{area="heap"}) * 100 
+
+    - record: elasticsearch_disk_usage
+      expr: elasticsearch_filesystem_data_available_bytes / elasticsearch_filesystem_data_size_bytes * 100
+

@@ -1,0 +1,124 @@
+groups:
+- name: Clickhouse Alerts
+  rules:
+    - alert: MergeRateTooHigh
+      expr: sum(irate(ClickHouseProfileEvents_Merge{instance=~"clickhouse.*"}[2m])) by (layer, instance, region) > 500
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations:
+        summary: "[Clickhouse merge rate]: [{{ $labels.instance }}] [{{ $labels.region }}] - {{ $value }}% "
+
+    - alert: OpenFilesTooHigh
+      expr: sum(irate(ClickHouseProfileEvents_FileOpen{instance=~"$instance"}[2m])) by (instance, job, region) > 2000 
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations:
+        summary: "[Clickhouse open files]: [{{ $labels.job }}] [{{ $labels.instance }}]  [{{ $labels.region }}] - {{ $value }} "
+
+    - alert: ClickhouseSlowMerges
+      expr: sum(increase(ClickHouseProfileEvents_MergesTimeMilliseconds[1m])) by (region,instance,job) / sum(increase(ClickHouseProfileEvents_Merge[1m])) by (region,instance,job) > 100
+      for: 5m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations: 
+        summary: "[Merge duration is high] [{{ $labels.region }}]  [{{ $labels.instance }}] - {{ $value }}  "  
+
+    - alert: ReplicationNotHappening
+      expr: sum(irate(ClickHouseProfileEvents_ReplicatedPartFetches{job!="clickhouse-logs-test"}[2m])) by (region,instance,job) == 0 
+      for: 10m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations: 
+        summary: "[Replication Stopped ] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] " 
+
+    - alert: FailedInserts
+      expr: sum(rate(ClickHouseProfileEvents_FailedInsertQuery[1m])) by (region,instance,job) > 50
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations: 
+        summary: "[Clickhouse Failed Inserts ] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] - {{ $value }} events/s" 
+
+    - alert: RejectedInserts
+      expr: sum(rate(ClickHouseProfileEvents_RejectedInserts[1m])) by (region,instance,job) > 50 
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations: 
+        summary: "[Clickhouse Rejected Inserts ] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] - {{ $value }} events/s" 
+
+    - alert: DelayedInserts
+      expr: sum(rate(ClickHouseProfileEvents_DelayedInserts[1m])) by (region,instance,job) > 50 
+      for: 2m
+      labels:
+        severity: critical
+        noc_severity: p2
+      annotations: 
+        summary: "[Clickhouse Delayed Inserts ] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] - {{ $value }} events/s" 
+
+- name: Zookeeper Alerts
+  rules:
+    - alert: create too many znodes
+      expr: znode_count{instance=~"zookeeper.*"} > 1000000
+      for: 1m
+      labels:
+        severity: warning
+        noc_severity: p2
+      annotations:
+        summary: "[Too many Znodes] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] - {{ $value }}"
+    - alert: create too many connections
+      expr: num_alive_connections{instance=~"zookeeper.*"} > 50
+      for: 1m
+      labels:
+        severity: warning
+        noc_severity: p2
+      annotations:
+        summary: "[Too many Connections] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] - {{ $value }}"
+    - alert: znode memory high
+      expr: approximate_data_size{instance=~"zookeeper.*"} /1024 /1024 > 1 * 1024
+      for: 1m
+      labels:
+        severity: warning
+        noc_severity: p2
+      annotations:
+        summary: "[Znode memory high] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] - {{ $value }} MB"
+    - alert: Leader election happened
+      expr: increase(election_time_count{instance=~"zookeeper.*"}[5m]) > 0
+      for: 1m
+      labels:
+        severity: warning
+        noc_severity: p2
+      annotations:
+        summary: "[Leader election happened] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] - {{ $value }}"
+    - alert: Too many open files
+      expr: open_file_descriptor_count{instance=~"zookeeper.*"} > 300
+      for: 1m
+      labels:
+        severity: warning
+        noc_severity: p2
+      annotations:
+        summary: "[Too many open files] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] - {{ $value }}"
+    - alert: Avg latency high
+      expr: avg_latency{instance=~"zookeeper.*"} > 100
+      for: 1m
+      labels:
+        severity: warning
+        noc_severity: p2
+      annotations:
+        summary: "[Avg latency high] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] - {{ $value }}"
+    - alert: JVM memory filling up
+      expr: jvm_memory_bytes_used{instance=~"zookeeper.*"} / jvm_memory_bytes_max{area="heap",instance=~"zookeeper.*"} > 0.8
+      for: 5m
+      labels:
+        severity: warning
+        noc_severity: p2
+      annotations:
+        summary: "[JVM memory is filling up] [{{ $labels.region }}] [{{ $labels.job }}]  [{{ $labels.instance }}] - {{ $value }}"

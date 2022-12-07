@@ -1,0 +1,51 @@
+groups:
+- name: Discovery Service alerts   
+  rules:
+  - alert: DiscoveryErrorsReceived
+    expr: sum by (region, job, name, type, error, instance) (rate(discovery_errors_total{region!="us-east-1",job=~".*discovery.*"}[1m])) * 60 > 0
+    for: 2m
+    labels:
+      severity: warning
+      noc_severity: p1
+    annotations:
+      summary: "[Discovery errors]: [{{ $labels.job }}] [{{ $labels.error }}] [{{ $labels.instance }}] [{{ $labels.region }}] [{{$labels.type}}] [{{$labels.k8s_cluster_name}}] - [{{ $value }}] "
+  - alert: DiscoveryErrorsExporterReceived
+    expr: sum by (region, job, name, type, error, instance) (rate(discovery_errors_exporter_total{region!="us-east-1",job=~".*discovery.*", error!~".*routeActionClusterMismatch.*"}[1m])) * 60 > 0
+    for: 2m
+    labels:
+      severity: critical
+      noc_severity: p0
+    annotations:
+      summary: "[Discovery errors exporter]: [{{ $labels.job }}] [{{ $labels.error }}] [{{ $labels.instance }}] [{{ $labels.region }}] [{{$labels.type}}] [{{$labels.k8s_cluster_name}}] - [{{ $value }}] "
+  - alert: DiscoveryOpsStopped
+    expr: sum(increase(discovery_ops_total{region!="us-east-1",job=~".*discovery.*",type=~"k8s"}[5m])) by (region,instance,type,job) <= 0
+    for: 10m
+    labels:
+      severity: critical
+      noc_severity: p0
+    annotations:
+      summary: "[Discovery ops rate]: [{{ $labels.job }}] [{{ $labels.instance }}] [{{ $labels.region }}] [{{$labels.type}}] - [{{ $value }}] "
+  - alert: DiscoveryAWSAPILatencyIncreased
+    expr: histogram_quantile(0.95, sum(rate(discovery_aws_api_latency_seconds_bucket{region!="us-east-1",job=~".*discovery.*",service!~"route53"}[5m])) by (le,region,instance, service, operation,job)) > 1
+    for: 5m
+    labels:
+      severity: warning
+      noc_severity: p1
+    annotations:
+      summary: "[Discovery AWS API latency increased]: [{{ $labels.job }}] [{{ $labels.instance }}] [{{ $labels.region }}] [{{$labels.service}}] [{{$labels.operation}}] - [{{ $value }}] "
+  - alert: DiscoveryRoute53AWSAPILatencyIncreased
+    expr: histogram_quantile(0.95, sum(rate(discovery_aws_api_latency_seconds_bucket{region!="us-east-1",job=~".*discovery.*",service=~"route53"}[5m])) by (le,region,instance, service, operation,job)) > 5
+    for: 5m
+    labels:
+      severity: warning
+      noc_severity: p1
+    annotations:
+      summary: "[Discovery AWS API latency increased]: [{{ $labels.job }}] [{{ $labels.instance }}] [{{ $labels.region }}] [{{$labels.service}}] [{{$labels.operation}}] - [{{ $value }}] "
+  - alert: EnvoyToDiscoveryServiceConnectionIssue
+    expr: sum(discovery_xds_client_streaming{region!="us-east-1",job=~".*discovery.*"}) by (region) != sum(envoy_cluster_upstream_cx_active{region!="us-east-1",envoy_cluster_name=~"xds_cluster", layer=~"envoy-common|envoy-common-staging|envoy-lb|envoy-nlb|meta-envoy-common|envoy-cortex-nlb|envoy-logs-nlb|envoy-trace-nlb|envoy-traces-staging|envoy-logs-staging|envoy-metrics-staging|envoy-traces|envoy-logs|envoy-metrics|envoy-internal-lb|envoy-staging-ebpf"}) by (region)
+    for: 5m
+    labels:
+      severity: critical
+      noc_severity: p0
+    annotations:
+      summary: "[EnvoyToDiscoveryService connection issue]: [{{ $labels.region }}] -  [{{ $value }}]"

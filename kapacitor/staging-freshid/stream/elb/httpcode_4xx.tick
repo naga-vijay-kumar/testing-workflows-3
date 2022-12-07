@@ -1,0 +1,18 @@
+
+//Alert when container memory happen
+stream
+    |from()
+        .database('staging-freshid')
+        .measurement('cloudwatch_aws_application_elb')
+    |groupBy('load_balancer','region')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('http_code_elb_4xx_count_average')
+         .as('4xx_count_avg')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "load_balancer" }} ] [ http_code_elb_4xx_count_average ] - {{ index .Fields "http_code_elb_4xx_count_average" }} {{ .Level }}')
+        .crit(lambda: "4xx_count_avg" > 10 )
+        .critReset(lambda: "4xx_count_avg" < 0 )
+        .stateChangesOnly()
+        .topic('staging-freshid')

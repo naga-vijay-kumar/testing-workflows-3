@@ -1,0 +1,86 @@
+groups:
+- name: Envoy Alerts
+  rules:
+  - alert: EnvoyUnhealthyCluster
+    expr: (sum(envoy_cluster_membership_total{envoy_cluster_name!~"staging-router-query-service-port-experiment"}) by (region,envoy_cluster_name,instance) - sum(envoy_cluster_membership_healthy{envoy_cluster_name!~"staging-router-query-service-port-experiment"}) by(region,envoy_cluster_name,instance)) > 0
+    for: 5m
+    labels:
+      severity: critical
+      noc_severity: p1
+    annotations:
+      summary: "[Cluster is unhealthy] {{ $labels.region }} {{ $labels.envoy_cluster_name }} {{ $labels.instance }}"
+  - alert: EnvoyClusterRetriesFailed
+    expr: sum by (region,envoy_cluster_name,instance,job) (rate(envoy_cluster_upstream_rq_retry_limit_exceeded[5m])) > 0
+    for: 5m
+    labels:
+      severity: warning
+      noc_severity: p1
+    annotations:
+      summary: "[Request retries to cluster failed] :{{ $labels.envoy_cluster_name }} from {{ $labels.instance }}/ {{ $labels.region }} - {{ $value }}"
+  - alert: EnvoyUpstreamConnectionOverflow
+    expr: sum by (region,envoy_cluster_name,instance,job) (rate(envoy_cluster_upstream_cx_overflow[5m])) > 0
+    for: 5m
+    labels:
+      severity: warning
+      noc_severity: p1
+    annotations:
+      summary: "[Connections Overflow to cluster]:{{ $labels.envoy_cluster_name }} from {{ $labels.instance }}/ {{ $labels.region }} - {{ $value }}"
+  - alert: EnvoyUpstream5xxErrors
+    expr: sum by (region,envoy_cluster_name,layer,job) (rate(envoy_cluster_upstream_rq_xx{envoy_response_code_class="5", envoy_cluster_name!~".*staging.*|.*test.*"}[2m])) > 5
+    for: 4m
+    labels:
+      severity: critical
+      noc_severity: p0
+    annotations:
+      summary: "[Error respsones from cluster] :{{ $labels.envoy_cluster_name }} from {{ $labels.instance }}/ {{ $labels.region }} - {{ $value }} "
+      description: "Error responses from upstream clusters. VALUE = {{ $value }}."
+  - alert: EnvoyDownstream5xxErrors
+    expr: sum by (region,layer,job,envoy_http_conn_manager_prefix) (rate(envoy_http_downstream_rq_xx{envoy_response_code_class="5"}[2m])) > 5
+    for: 4m
+    labels:
+      severity: critical
+      noc_severity: p1
+    annotations:
+      summary: "[Error respsones from downstream] {{$labels.envoy_http_conn_manager_prefix}} from {{ $labels.instance }}/ {{ $labels.region }} - {{ $value }}"
+  - alert: StagingEnvoyUpstream5xxErrors
+    expr: sum by (region,envoy_cluster_name,instance,job) (rate(envoy_cluster_upstream_rq_xx{envoy_response_code_class="5", envoy_cluster_name=~".*staging.*|.*test.*"}[2m])) > 5
+    for: 2m
+    labels:
+      severity: critical
+      noc_severity: p1
+    annotations:
+      summary: "[Error respsones from cluster] :{{ $labels.envoy_cluster_name }} from {{ $labels.instance }}/ {{ $labels.region }} - {{ $value }} "
+      description: "Error responses from upstream clusters. VALUE = {{ $value }}."
+  - alert: EnvoyClusterNoHealthyEndpoints
+    expr: max(envoy_cluster_membership_healthy{envoy_cluster_name!~".*test.*|.*staging.*"}) by (region,envoy_cluster_name) == 0
+    for: 2m
+    labels:
+      severity: critical
+      noc_severity: p0
+    annotations:
+      summary: "Envoy cluster no healthy endpoints {{ $labels.region }} {{ $labels.envoy_cluster_name}} - {{ $value }}"
+  - alert: EnvoyNonProdClusterNoHealthyEndpoints
+    expr: max(envoy_cluster_membership_healthy{envoy_cluster_name=~".*test.*|.*staging.*"}) by (region,envoy_cluster_name) == 0
+    for: 5m
+    labels:
+      severity: warning
+      noc_severity: p1
+    annotations:
+      summary: "Envoy cluster no healthy endpoints {{ $labels.region }} {{ $labels.envoy_cluster_name}} - {{ $value }}"
+  - alert: EnvoyUpstream4xxErrors
+    expr: sum by (region,envoy_cluster_name,instance,job) (rate(envoy_cluster_upstream_rq_xx{envoy_response_code_class="4",envoy_cluster_name!="metrics-envoy"}[2m])) > 500
+    for: 2m
+    labels:
+      severity: warning
+      noc_severity: p1
+    annotations:
+      summary: "[4xx respsones from cluster] :{{ $labels.envoy_cluster_name }} from {{ $labels.instance }}/ {{ $labels.region }} - {{ $value }} "
+      description: "4xx responses from upstream clusters. VALUE = {{ $value }}."
+  - alert: EnvoyDownstream4xxErrors
+    expr: sum by (region,instance,job,envoy_http_conn_manager_prefix) (rate(envoy_http_downstream_rq_xx{envoy_response_code_class="4",envoy_http_conn_manager_prefix!~"trigmetry_http"}[2m])) > 500
+    for: 2m
+    labels:
+      severity: warning
+      noc_severity: p1
+    annotations:
+      summary: "[Error respsones from downstream] {{$labels.envoy_http_conn_manager_prefix}} from {{ $labels.instance }}/ {{ $labels.region }} - {{ $value }}"

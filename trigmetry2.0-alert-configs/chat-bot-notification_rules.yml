@@ -1,0 +1,20 @@
+groups:
+  - name: chat-bot-notification Alerts
+    rules:
+      - alert: High Iterator Lag
+        expr: max(aws_kinesis_get_records_iterator_age_milliseconds_maximum{dimension_StreamName=~".*_haystack$", dimension_StreamName!="common_haystack", dimension_StreamName!="staging-common_haystack", dimension_StreamName!="error_haystack", dimension_StreamName!="error_haystack_uf", dimension_StreamName!="haystack_haystack"} / 60000)  by (dimension_StreamName,region,job) >= 30
+        for: 3m
+        labels:
+          severity: critical
+          app: chat-bot
+        annotations:
+          summary: 'Observing iterator lag of {{ $value | printf "%.2f"  }} minutes for {{ $labels.dimension_StreamName }} in {{ $labels.region }}.'
+
+      - alert: Traffic Increased By 2X
+        expr: (sum(rate(com_freshworks_haystack_resources_ProxyResource_events_total{job=~"logs-proxy|k8s-logs-proxy"}[5m])) by (region,product) > 10000) / (sum(rate(com_freshworks_haystack_resources_ProxyResource_events_total{job=~"logs-proxy|k8s-logs-proxy"}[5m] offset 1w)) by (region,product) > 10000) > 2
+        for: 1h
+        labels:
+          severity: warning
+          app: chat-bot
+        annotations:
+          summary: "Traffic increased 2X times for [{{ $labels.product }}] in [{{ $labels.region }}]"

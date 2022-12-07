@@ -1,0 +1,27 @@
+
+//result_code=0 --> The HTTP request completed, even if the HTTP code represents an error
+//result_code=1 --> The option response_string_match was used, and the body of the response didn't match the regex. HTTP errors with content in their body (like 4xx, 5xx) will trigger this error
+//result_code=2 --> The option response_string_match was used, but the plugin wasn't able to read the body of the response. Responses with empty bodies (like 3xx, HEAD, etc) will trigger this error. Or the option response_body_field was used and the content of the response body was not a valid utf-8. Or the size of the body of the response exceeded the response_body_max_size
+//result_code=3 --> Catch all for any network error not specifically handled by the plugin
+//result_code=4 --> The plugin timed out while awaiting the HTTP connection to complete
+//result_code=5 --> There was a DNS error while attempting to connect to the host
+
+// So we need to use the combination of "result_code" and "http_response_code" to validate the response
+
+stream
+    |from()
+        .database('freshchat')
+        .measurement('http_response')
+        .where(lambda: "group" == 'nginx')
+        .groupBy('region','cluster','group','host','server')
+    |stateCount(lambda: "result_code" > 0 OR "http_response_code" != 200)
+        .as('failed_checks')
+    |stateCount(lambda: "result_code" == 0 AND "http_response_code" == 200)
+        .as('passed_checks')
+    |alert()
+    	.message('[ {{ .Time }} ] [ {{ index .Tags "cluster" }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "group" }} ] [ {{ index .Tags "host" }} ] [ {{ index .Tags "server" }} ] [ nginx_server_http_check_failed ] - {{ if eq .Level "OK" }} http_check is passed for last {{ index .Fields "passed_checks" }} checks{{ else }} http_check failed for last {{ index .Fields "failed_checks" }} checks{{ end }} {{ .Level }}')
+	    .id('{{ .Name }}:{{ .Group }}/nginx_server_http_check_failed')
+        .crit(lambda: "failed_checks" >= 1 )
+	    .critReset(lambda: "passed_checks" >= 4)
+	    .stateChangesOnly()
+	    .topic('freshchat')

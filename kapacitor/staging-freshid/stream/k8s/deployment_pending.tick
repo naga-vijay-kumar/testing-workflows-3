@@ -1,0 +1,17 @@
+//Alert when deployment stays pending]
+stream
+    |from()
+        .database('staging-freshid')
+        .measurement('kube_deployment_status_replicas_unavailable')
+    |groupBy('region', 'k8s_cluster_name', 'deployment', 'namespace')
+    |window()
+        .period(15m)
+        .every(15m)
+    |count('gauge')
+        .as('unavailable_replicase')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "deployment" }} ] [ deployment_pending ] - {{ index .Fields "deployment_pending" }} - {{ .Level }}')
+        .crit(lambda: "unavailable_replicase" >= 2 )
+        .critReset(lambda: "unavailable_replicase" == 1 )
+        .stateChangesOnly()
+        .topic('staging-freshid')

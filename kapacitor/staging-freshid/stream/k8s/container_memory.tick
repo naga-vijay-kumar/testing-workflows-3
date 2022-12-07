@@ -1,0 +1,17 @@
+//Alert when container memory happen
+stream
+    |from()
+        .database('staging-freshid')
+        .measurement('docker_container_mem')
+    |groupBy('region', 'k8s_cluster_name', 'container', 'namespace')
+    |window()
+        .period(10m)
+        .every(10m)
+    |mean('usage_percent')
+        .as('avg_container_memory')
+    |alert()
+        .message('[ {{ .Time }} ] [ {{ index .Tags "region" }} ] [ {{ index .Tags "k8s_cluster_name" }} ] [ {{ index .Tags "container" }} ] [ container_memory_usage ] - {{ index .Fields "container_memory_usage" }} {{ .Level }}')
+        .crit(lambda: "avg_container_memory" >= 85 )
+        .critReset(lambda: "avg_container_memory" < 75)
+        .stateChangesOnly()
+        .topic('staging-freshid')
