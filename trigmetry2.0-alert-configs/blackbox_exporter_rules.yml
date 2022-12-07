@@ -12,3 +12,5 @@
           "component": "cortex"
         "annotations":
           "summary": "Endpoint {{ $labels.instance }} down"
+
+
