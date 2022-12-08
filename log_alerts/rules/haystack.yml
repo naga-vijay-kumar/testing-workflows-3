@@ -4,7 +4,7 @@ alert_params:
     type: any
     index: haystack*
     realert:
-      minutes: 1
+      minutes: 1one
     aggregation:
       minutes: 5
     aggregation_key: "kubernetes.pod.name"
