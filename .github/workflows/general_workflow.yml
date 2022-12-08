@@ -1,0 +1,12 @@
+name: validate_alerts
+on:
+  pull_request:
+    paths-ignore:
+      - 'log_alerts/**'
+      - 'trigmetry2.0-alert-configs/**'
+jobs:
+  build:
+    name : validate_alerts
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No build required"'
