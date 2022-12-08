@@ -121,14 +121,3 @@ alert_params:
     alerta_environment: haystack
     use_count_query: true
     top_count_keys: ["time", "level", "name"] 
-
-
-
-
-
-
-
-
-
-
-
