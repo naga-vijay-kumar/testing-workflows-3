@@ -9,4 +9,6 @@ jobs:
     name : validate_alerts
     runs-on: ubuntu-latest
     steps:
-      - run: 'echo "No build required"'
+      - name: "No Build Required"
+        run: |
+          echo "No Build Required"
