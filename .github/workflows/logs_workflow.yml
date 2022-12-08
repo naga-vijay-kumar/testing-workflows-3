@@ -4,7 +4,7 @@ name: validate log alerts
 
 # Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
+  # Triggers the workflow on push or pull request events but only for the "logs_onboard" branch
   pull_request:
     branches:    
       - 'logs_onboard'
@@ -39,7 +39,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
 
-      # Runs a single command using the runners shell
       - name: run installation script
         run: |
           sudo apt-get update
@@ -52,6 +51,5 @@ jobs:
           pip install cerberus
           pip install simple-chalk
 
-      # Runs a single command using the runners shell
       - name: Run Log alerts validation script
         run: python validate_log_alerts/validate_rule.py
