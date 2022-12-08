@@ -10,11 +10,11 @@ on:
       - 'logs_onboard'
     paths:
       - 'log_alerts/**'
-      - '!trigmetry2.0-alert-configs'
-      - '!trace_alerts'
-      - '!slo-configs'
-      - '!kapacitor'
-      - '!cloudwatch-configs'
+      - '!trigmetry2.0-alert-configs/**'
+      - '!trace_alerts/**'
+      - '!slo-configs/**'
+      - '!kapacitor/**'
+      - '!cloudwatch-configs/**'
       
 
   # Allows you to run this workflow manually from the Actions tab
