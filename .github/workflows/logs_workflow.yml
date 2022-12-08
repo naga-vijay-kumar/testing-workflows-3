@@ -8,48 +8,36 @@ on:
   pull_request:
     branches:    
       - 'logs_onboard'
-    paths:
-      - 'log_alerts/**'
-      - '!trigmetry2.0-alert-configs/**'
-      - '!trace_alerts/**'
-      - '!slo-configs/**'
-      - '!kapacitor/**'
-      - '!cloudwatch-configs/**'
       
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    # This displays in workflow
-    name : validate log alerts
-    runs-on: ubuntu-latest
-
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+  one:
+    runs-on: ubuntu-16.04
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
-        with:
-          submodules: 'true'
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-
-      - name: run installation script
-        run: |
-          sudo apt-get update
-          sudo apt-get install python3-tk -y
-
-      - name: install python packages
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyyaml
-          pip install cerberus
-          pip install simple-chalk
-
-      - name: Run Log alerts validation script
-        run: python validate_log_alerts/validate_rule.py
+      - name: Dump GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+      - name: Dump job context
+        env:
+          JOB_CONTEXT: ${{ toJson(job) }}
+        run: echo "$JOB_CONTEXT"
+      - name: Dump steps context
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+        run: echo "$STEPS_CONTEXT"
+      - name: Dump runner context
+        env:
+          RUNNER_CONTEXT: ${{ toJson(runner) }}
+        run: echo "$RUNNER_CONTEXT"
+      - name: Dump strategy context
+        env:
+          STRATEGY_CONTEXT: ${{ toJson(strategy) }}
+        run: echo "$STRATEGY_CONTEXT"
+      - name: Dump matrix context
+        env:
+          MATRIX_CONTEXT: ${{ toJson(matrix) }}
+        run: echo "$MATRIX_CONTEXT"
