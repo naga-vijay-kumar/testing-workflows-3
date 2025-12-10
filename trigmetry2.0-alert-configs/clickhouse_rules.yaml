@@ -1,4 +1,4 @@
-groups:
+
 - name: Clickhouse Alerts
   rules:
     - alert: MergeRateTooHigh
