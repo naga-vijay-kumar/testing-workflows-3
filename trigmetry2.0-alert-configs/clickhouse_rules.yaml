@@ -1,6 +1,5 @@
 
-- name: Clickhouse Alerts
-  rules:
+  rules
     - alert: MergeRateTooHigh
       expr: sum(irate(ClickHouseProfileEvents_Merge{instance=~"clickhouse.*"}[2m])) by (layer, instance, region) > 500
       for: 5m
