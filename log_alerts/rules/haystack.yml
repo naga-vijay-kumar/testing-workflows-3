@@ -1,6 +1,6 @@
-alert_params:   
-  "rum_metrics_indexing_error":
-    type: any
+# alert_params:   
+#   "rum_metrics_indexing_error":
+#     type: any
     index: haystack*
     realert:
       minutes: 1
